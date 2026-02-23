@@ -1,0 +1,49 @@
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+
+export const PROPERTY_STATUS = {
+    ACTIVE: 1,
+    INACTIVE: 0,
+} as const;
+
+export const APPOINTMENT_STATUS = {
+    PENDING: 0,
+    APPROVED: 1,
+    REJECTED: 2,
+} as const;
+
+export const APPOINTMENT_STATUS_LABELS: Record<number, string> = {
+    0: 'Chờ duyệt',
+    1: 'Đã duyệt',
+    2: 'Từ chối',
+};
+
+export const POST_STATUS = {
+    PENDING: 1,
+    APPROVED: 2,
+    REJECTED: 3,
+} as const;
+
+export const POST_STATUS_LABELS: Record<number, string> = {
+    1: 'Chờ duyệt',
+    2: 'Đã duyệt',
+    3: 'Từ chối',
+};
+
+export const USER_STATUS = {
+    ACTIVE: 1,
+    INACTIVE: 0,
+} as const;
+
+export const DIRECTIONS = [
+    'Đông',
+    'Tây',
+    'Nam',
+    'Bắc',
+    'Đông Bắc',
+    'Đông Nam',
+    'Tây Bắc',
+    'Tây Nam',
+];
+
+export const PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
+export const DEFAULT_PAGE_SIZE = 10;

@@ -1,0 +1,302 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// ==================== USER & AUTH ====================
+
+model User {
+  id          Int      @id @default(autoincrement())
+  username    String   @unique @db.VarChar(255)
+  password    String   @db.VarChar(255)
+  fullName    String?  @map("full_name") @db.VarChar(255)
+  phone       String?  @unique @db.VarChar(15)
+  email       String?  @unique @db.VarChar(255)
+  address     String?  @db.VarChar(255)
+  status      Int      @default(1)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  customer      Customer?
+  employee      Employee?
+  userRoles     UserRole[]
+  posts         Post[]
+  favorites     Favorite[]
+  refreshTokens RefreshToken[]
+
+  @@map("users")
+}
+
+model Role {
+  id          Int      @id @default(autoincrement())
+  code        String   @unique @db.VarChar(20)
+  name        String   @db.VarChar(255)
+  description String?  @db.VarChar(255)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  userRoles UserRole[]
+
+  @@map("roles")
+}
+
+model UserRole {
+  id     Int @id @default(autoincrement())
+  userId Int @map("user_id")
+  roleId Int @map("role_id")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, roleId])
+  @@map("user_roles")
+}
+
+model RefreshToken {
+  id        Int      @id @default(autoincrement())
+  token     String   @db.Text
+  expiresAt DateTime @map("expires_at")
+  revoked   Boolean  @default(false)
+  userId    Int      @map("user_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("refresh_tokens")
+}
+
+model PasswordReset {
+  id        Int      @id @default(autoincrement())
+  email     String   @db.VarChar(255)
+  otp       String   @db.VarChar(10)
+  expireAt  DateTime @map("expire_at")
+  type      String   @db.VarChar(20) // 'register' | 'reset'
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("password_resets")
+}
+
+// ==================== CUSTOMER & EMPLOYEE ====================
+
+model Customer {
+  id        Int      @id @default(autoincrement())
+  code      String   @unique @map("customer_code") @db.VarChar(10)
+  userId    Int      @unique @map("user_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  appointments Appointment[]
+
+  @@map("customers")
+}
+
+model Employee {
+  id        Int       @id @default(autoincrement())
+  code      String    @unique @map("employee_code") @db.VarChar(10)
+  startDate DateTime? @map("start_date")
+  userId    Int       @unique @map("user_id")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  houses       House[]
+  lands        Land[]
+  appointments Appointment[]
+
+  @@map("employees")
+}
+
+// ==================== PROPERTY CATEGORY ====================
+
+model PropertyCategory {
+  id   Int    @id @default(autoincrement())
+  code String @unique @map("category_code") @db.VarChar(10)
+  name String @db.VarChar(255)
+
+  houses House[]
+  lands  Land[]
+
+  @@map("property_categories")
+}
+
+// ==================== HOUSE (Nhà) ====================
+
+model House {
+  id          Int      @id @default(autoincrement())
+  code        String   @unique @map("house_code") @db.VarChar(10)
+  title       String   @db.VarChar(255)
+  city        String?  @db.VarChar(100)
+  district    String?  @db.VarChar(100)
+  ward        String?  @db.VarChar(100)
+  street      String?  @db.VarChar(100)
+  houseNumber String?  @map("house_number") @db.VarChar(20)
+  description String?  @db.Text
+  price       Decimal? @db.Decimal(15, 2)
+  area        Float?
+  direction   String?  @db.VarChar(50)
+  floors      Int?     @default(1)
+  bedrooms    Int?     @default(0)
+  bathrooms   Int?     @default(0)
+  status      Int      @default(1)
+  categoryId  Int?     @map("category_id")
+  employeeId  Int?     @map("employee_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  category     PropertyCategory? @relation(fields: [categoryId], references: [id])
+  employee     Employee?         @relation(fields: [employeeId], references: [id])
+  images       HouseImage[]
+  appointments Appointment[]
+  favorites    Favorite[]
+
+  @@map("houses")
+}
+
+model HouseImage {
+  id        Int      @id @default(autoincrement())
+  url       String   @db.VarChar(500)
+  type      String?  @db.VarChar(50)
+  position  Int?
+  houseId   Int      @map("house_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  house House @relation(fields: [houseId], references: [id], onDelete: Cascade)
+
+  @@map("house_images")
+}
+
+// ==================== LAND (Đất) ====================
+
+model Land {
+  id          Int      @id @default(autoincrement())
+  code        String   @unique @map("land_code") @db.VarChar(10)
+  title       String   @db.VarChar(255)
+  city        String?  @db.VarChar(100)
+  district    String?  @db.VarChar(100)
+  ward        String?  @db.VarChar(100)
+  street      String?  @db.VarChar(100)
+  plotNumber  String?  @map("plot_number") @db.VarChar(20)
+  description String?  @db.Text
+  price       Decimal? @db.Decimal(15, 2)
+  area        Float?
+  direction   String?  @db.VarChar(50)
+  frontWidth  Float?   @map("front_width")
+  landLength  Float?   @map("land_length")
+  landType    String?  @map("land_type") @db.VarChar(100)
+  legalStatus String?  @map("legal_status") @db.VarChar(100)
+  status      Int      @default(1)
+  categoryId  Int?     @map("category_id")
+  employeeId  Int?     @map("employee_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  category     PropertyCategory? @relation(fields: [categoryId], references: [id])
+  employee     Employee?         @relation(fields: [employeeId], references: [id])
+  images       LandImage[]
+  appointments Appointment[]     @relation("LandAppointments")
+  favorites    Favorite[]        @relation("LandFavorites")
+
+  @@map("lands")
+}
+
+model LandImage {
+  id        Int      @id @default(autoincrement())
+  url       String   @db.VarChar(500)
+  type      String?  @db.VarChar(50)
+  position  Int?
+  landId    Int      @map("land_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  land Land @relation(fields: [landId], references: [id], onDelete: Cascade)
+
+  @@map("land_images")
+}
+
+// ==================== APPOINTMENT ====================
+
+model Appointment {
+  id              Int      @id @default(autoincrement())
+  houseId         Int?     @map("house_id")
+  landId          Int?     @map("land_id")
+  customerId      Int      @map("customer_id")
+  employeeId      Int?     @map("employee_id")
+  appointmentDate DateTime @map("appointment_date")
+  status          Int      @default(0) // 0: pending, 1: approved, 2: rejected
+  actualStatus    Int?     @map("actual_status")
+  cancelReason    String?  @map("cancel_reason") @db.Text
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  house    House?    @relation(fields: [houseId], references: [id])
+  land     Land?     @relation("LandAppointments", fields: [landId], references: [id])
+  customer Customer  @relation(fields: [customerId], references: [id])
+  employee Employee? @relation(fields: [employeeId], references: [id])
+
+  @@map("appointments")
+}
+
+// ==================== POST ====================
+
+model Post {
+  id          Int       @id @default(autoincrement())
+  title       String    @db.VarChar(255)
+  city        String    @db.VarChar(100)
+  district    String    @db.VarChar(100)
+  ward        String    @db.VarChar(100)
+  address     String    @db.VarChar(255)
+  description String    @db.Text
+  price       Decimal   @db.Decimal(15, 2)
+  area        Decimal   @db.Decimal(10, 2)
+  direction   String?   @db.VarChar(50)
+  status      Int       @default(1) // 1: pending, 2: approved, 3: rejected
+  userId      Int       @map("user_id")
+  postedAt    DateTime  @default(now()) @map("posted_at")
+  approvedAt  DateTime? @map("approved_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  user   User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  images PostImage[]
+
+  @@map("posts")
+}
+
+model PostImage {
+  id        Int      @id @default(autoincrement())
+  url       String   @db.VarChar(500)
+  position  Int?
+  postId    Int      @map("post_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@map("post_images")
+}
+
+// ==================== FAVORITE ====================
+
+model Favorite {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  houseId   Int?     @map("house_id")
+  landId    Int?     @map("land_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  house House? @relation(fields: [houseId], references: [id], onDelete: Cascade)
+  land  Land?  @relation("LandFavorites", fields: [landId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, houseId])
+  @@unique([userId, landId])
+  @@map("favorites")
+}

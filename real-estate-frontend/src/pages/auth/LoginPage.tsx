@@ -19,7 +19,7 @@ const LoginPage: React.FC = () => {
         setLoading(true);
         try {
             const res = await authApi.login(values);
-            const { user, accessToken, refreshToken } = res.data.data;
+            const { user, accessToken, refreshToken } = res.data;
             setAuth(user, accessToken, refreshToken);
             message.success('Đăng nhập thành công!');
             navigate(from, { replace: true });

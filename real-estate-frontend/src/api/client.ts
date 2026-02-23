@@ -43,7 +43,7 @@ apiClient.interceptors.response.use(
                     refreshToken,
                 });
 
-                const { accessToken, refreshToken: newRefreshToken } = response.data.data;
+                const { accessToken, refreshToken: newRefreshToken } = response.data;
                 useAuthStore.getState().setTokens(accessToken, newRefreshToken);
 
                 originalRequest.headers.Authorization = `Bearer ${accessToken}`;

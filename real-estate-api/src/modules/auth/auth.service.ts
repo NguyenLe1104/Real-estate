@@ -84,12 +84,18 @@ export class AuthService {
         }
 
         return {
-            message: 'Login successful',
+            user: {
+                id: user.id,
+                username: user.username,
+                email: user.email,
+                fullName: user.fullName,
+                phone: user.phone,
+                address: user.address,
+                roles,
+                employeeId,
+            },
             accessToken,
             refreshToken,
-            roles,
-            userId: user.id,
-            employeeId,
         };
     }
 

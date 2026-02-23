@@ -16,9 +16,6 @@ RUN npx prisma generate
 # Copy source (will be overridden by volume mount in dev)
 COPY . .
 
-# Make entrypoint executable
-RUN chmod +x docker-entrypoint.sh
-
 EXPOSE 5000
 
-ENTRYPOINT ["./docker-entrypoint.sh"]
+CMD ["sh", "-c", "npx prisma migrate deploy && npx prisma db seed && npm run start:dev"]

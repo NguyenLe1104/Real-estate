@@ -3,7 +3,7 @@ import type { LoginRequest, RegisterRequest, AuthResponse, ForgotPasswordRequest
 
 export const authApi = {
     login: (data: LoginRequest) =>
-        apiClient.post<{ data: AuthResponse }>('/login', data),
+        apiClient.post<AuthResponse>('/login', data),
 
     register: (data: RegisterRequest) =>
         apiClient.post('/register', data),
@@ -12,7 +12,7 @@ export const authApi = {
         apiClient.post('/register/confirm', data),
 
     googleLogin: (idToken: string) =>
-        apiClient.post<{ data: AuthResponse }>('/login-google', { idToken }),
+        apiClient.post<AuthResponse>('/login-google', { idToken }),
 
     refreshToken: (refreshToken: string) =>
         apiClient.post<{ data: AuthResponse }>('/refresh-token', { refreshToken }),

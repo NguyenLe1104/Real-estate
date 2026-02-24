@@ -1,6 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { Layout, Menu, Button, Space, Avatar, Dropdown } from 'antd';
-import { UserOutlined, HeartOutlined, LogoutOutlined, DashboardOutlined } from '@ant-design/icons';
+import { UserOutlined, HeartOutlined, LogoutOutlined, DashboardOutlined, WalletOutlined, FileTextOutlined } from '@ant-design/icons';
 import type { MenuProps } from 'antd';
 import { useAuthStore } from '@/stores/authStore';
 
@@ -23,10 +23,22 @@ const PublicHeader: React.FC = () => {
             onClick: () => navigate('/admin/profile'),
         },
         {
+            key: 'my-posts',
+            icon: <FileTextOutlined />,
+            label: 'Tin đăng của tôi',
+            onClick: () => navigate('/my-posts'),
+        },
+        {
             key: 'favorites',
             icon: <HeartOutlined />,
             label: 'Yêu thích',
             onClick: () => navigate('/admin/favorites'),
+        },
+        {
+            key: 'payment-history',
+            icon: <WalletOutlined />,
+            label: 'Lịch sử thanh toán',
+            onClick: () => navigate('/admin/payment-history'),
         },
         {
             key: 'dashboard',

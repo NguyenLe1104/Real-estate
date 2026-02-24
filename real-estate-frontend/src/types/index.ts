@@ -164,6 +164,10 @@ export interface Post {
     area: number;
     direction?: string;
     status: number;
+    isVip?: boolean;
+    vipExpiry?: string;
+    vipPackageName?: string;
+    vipPriorityLevel?: number;
     userId: number;
     postedAt: string;
     approvedAt?: string;
@@ -239,4 +243,66 @@ export interface ResetPasswordRequest {
     email: string;
     otp: string;
     newPassword: string;
+}
+
+// ==================== VIP PACKAGE & PAYMENT ====================
+
+export interface VipPackage {
+    id: number;
+    name: string;
+    description?: string;
+    durationDays: number;
+    price: number;
+    priorityLevel: number;
+    features?: string;
+    status: number;
+    createdAt: string;
+    updatedAt: string;
+}
+
+export interface VipSubscription {
+    id: number;
+    postId: number;
+    packageId: number;
+    userId: number;
+    startDate?: string;
+    endDate?: string;
+    status: number; // 0: pending, 1: active, 2: expired, 3: cancelled
+    createdAt: string;
+    updatedAt: string;
+    package?: VipPackage;
+    post?: Post;
+    payment?: Payment;
+}
+
+export interface Payment {
+    id: number;
+    subscriptionId: number;
+    userId: number;
+    amount: number;
+    paymentMethod: string;
+    transactionId?: string;
+    status: number; // 0: pending, 1: success, 2: failed, 3: cancelled
+    paymentUrl?: string;
+    paidAt?: string;
+    createdAt: string;
+    updatedAt: string;
+    subscription?: VipSubscription;
+}
+
+export interface CreatePaymentRequest {
+    postId: number;
+    packageId: number;
+    paymentMethod: 'vnpay' | 'momo';
+    returnUrl: string;
+}
+
+export interface CreatePaymentResponse {
+    message: string;
+    data: {
+        paymentId: number;
+        subscriptionId: number;
+        paymentUrl: string;
+        amount: number;
+    };
 }

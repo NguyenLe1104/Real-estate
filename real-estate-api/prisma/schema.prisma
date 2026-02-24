@@ -21,12 +21,14 @@ model User {
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
-  customer      Customer?
-  employee      Employee?
-  userRoles     UserRole[]
-  posts         Post[]
-  favorites     Favorite[]
-  refreshTokens RefreshToken[]
+  customer        Customer?
+  employee        Employee?
+  userRoles       UserRole[]
+  posts           Post[]
+  favorites       Favorite[]
+  refreshTokens   RefreshToken[]
+  vipSubscriptions VipSubscription[]
+  payments        Payment[]
 
   @@map("users")
 }
@@ -258,14 +260,17 @@ model Post {
   area        Decimal   @db.Decimal(10, 2)
   direction   String?   @db.VarChar(50)
   status      Int       @default(1) // 1: pending, 2: approved, 3: rejected
+  isVip       Boolean   @default(false) @map("is_vip")
+  vipExpiry   DateTime? @map("vip_expiry")
   userId      Int       @map("user_id")
   postedAt    DateTime  @default(now()) @map("posted_at")
   approvedAt  DateTime? @map("approved_at")
   createdAt   DateTime  @default(now()) @map("created_at")
   updatedAt   DateTime  @updatedAt @map("updated_at")
 
-  user   User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  images PostImage[]
+  user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  images          PostImage[]
+  vipSubscriptions VipSubscription[]
 
   @@map("posts")
 }
@@ -299,4 +304,77 @@ model Favorite {
   @@unique([userId, houseId])
   @@unique([userId, landId])
   @@map("favorites")
+}
+
+// ==================== VIP PACKAGES ====================
+
+model VipPackage {
+  id            Int      @id @default(autoincrement())
+  name          String   @db.VarChar(255)
+  description   String?  @db.Text
+  durationDays  Int      @map("duration_days") // Số ngày gói VIP có hiệu lực
+  price         Decimal  @db.Decimal(15, 2)
+  priorityLevel Int      @default(1) @map("priority_level") // Mức độ ưu tiên (càng cao càng lên đầu)
+  features      String?  @db.Text // JSON string các tính năng
+  status        Int      @default(1) // 1: active, 0: inactive
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  subscriptions VipSubscription[]
+
+  @@map("vip_packages")
+}
+
+model VipSubscription {
+  id         Int       @id @default(autoincrement())
+  postId     Int       @map("post_id")
+  packageId  Int       @map("package_id")
+  userId     Int       @map("user_id")
+  startDate  DateTime? @map("start_date")
+  endDate    DateTime? @map("end_date")
+  status     Int       @default(0) @map("status") // 0: pending payment, 1: active, 2: expired, 3: cancelled
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+
+  post    Post       @relation(fields: [postId], references: [id], onDelete: Cascade)
+  package VipPackage @relation(fields: [packageId], references: [id])
+  user    User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  payment Payment?
+
+  @@map("vip_subscriptions")
+}
+
+model Payment {
+  id             Int       @id @default(autoincrement())
+  subscriptionId Int       @unique @map("subscription_id")
+  userId         Int       @map("user_id")
+  amount         Decimal   @db.Decimal(15, 2)
+  paymentMethod  String    @map("payment_method") @db.VarChar(50) // 'vnpay', 'momo'
+  transactionId  String?   @unique @map("transaction_id") @db.VarChar(255) // ID từ cổng thanh toán
+  status         Int       @default(0) // 0: pending, 1: success, 2: failed, 3: cancelled
+  paymentUrl     String?   @map("payment_url") @db.Text
+  paidAt         DateTime? @map("paid_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  subscription VipSubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  user         User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("payments")
+}
+
+model PaymentTransaction {
+  id            Int      @id @default(autoincrement())
+  paymentId     Int?     @map("payment_id")
+  transactionId String   @unique @map("transaction_id") @db.VarChar(255)
+  amount        Decimal  @db.Decimal(15, 2)
+  currency      String   @default("VND") @db.VarChar(10)
+  paymentMethod String   @map("payment_method") @db.VarChar(50)
+  status        String   @db.VarChar(50)
+  responseCode  String?  @map("response_code") @db.VarChar(50)
+  responseData  String?  @map("response_data") @db.Text // JSON response từ payment gateway
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@map("payment_transactions")
 }

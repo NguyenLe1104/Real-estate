@@ -16,6 +16,7 @@ import {
     MenuUnfoldOutlined,
     LogoutOutlined,
     SettingOutlined,
+    WalletOutlined,
 } from '@ant-design/icons';
 import type { MenuProps } from 'antd';
 import { useAuthStore } from '@/stores/authStore';
@@ -84,6 +85,11 @@ const menuItems: MenuProps['items'] = [
         key: '/admin/favorites',
         icon: <StarOutlined />,
         label: 'Yêu thích',
+    },
+    {
+        key: '/admin/payment-history',
+        icon: <WalletOutlined />,
+        label: 'Lịch sử thanh toán',
     },
 ];
 

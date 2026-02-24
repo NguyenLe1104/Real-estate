@@ -14,6 +14,8 @@ import { PostModule } from './modules/post/post.module';
 import { FavoriteModule } from './modules/favorite/favorite.module';
 import { FeaturedModule } from './modules/featured/featured.module';
 import { ProfileModule } from './modules/profile/profile.module';
+import { VipPackageModule } from './modules/vip-package/vip-package.module';
+import { PaymentModule } from './modules/payment/payment.module';
 import { CloudinaryModule } from './common/cloudinary/cloudinary.module';
 import { MailModule } from './common/mail/mail.module';
 
@@ -36,6 +38,8 @@ import { MailModule } from './common/mail/mail.module';
     FavoriteModule,
     FeaturedModule,
     ProfileModule,
+    VipPackageModule,
+    PaymentModule,
   ],
 })
 export class AppModule { }

@@ -47,3 +47,33 @@ export const DIRECTIONS = [
 
 export const PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
 export const DEFAULT_PAGE_SIZE = 10;
+
+// ==================== VIP & PAYMENT ====================
+
+export const PAYMENT_STATUS = {
+    PENDING: 0,
+    SUCCESS: 1,
+    FAILED: 2,
+    CANCELLED: 3,
+} as const;
+
+export const PAYMENT_STATUS_LABELS: Record<number, string> = {
+    0: 'Chờ thanh toán',
+    1: 'Thành công',
+    2: 'Thất bại',
+    3: 'Đã hủy',
+};
+
+export const SUBSCRIPTION_STATUS = {
+    PENDING: 0,
+    ACTIVE: 1,
+    EXPIRED: 2,
+    CANCELLED: 3,
+} as const;
+
+export const SUBSCRIPTION_STATUS_LABELS: Record<number, string> = {
+    0: 'Chờ thanh toán',
+    1: 'Đang hoạt động',
+    2: 'Hết hạn',
+    3: 'Đã hủy',
+};

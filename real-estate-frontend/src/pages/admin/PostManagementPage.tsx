@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Table, Button, Space, Tag, Input, Popconfirm, message, Typography } from 'antd';
-import { EditOutlined, DeleteOutlined, SearchOutlined } from '@ant-design/icons';
+import { EditOutlined, DeleteOutlined, SearchOutlined, CrownOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import { postApi } from '@/api';
 import { formatCurrency, formatDateTime } from '@/utils';
@@ -73,7 +73,20 @@ const PostManagementPage: React.FC = () => {
     };
 
     const columns: ColumnsType<Post> = [
-        { title: 'Tiêu đề', dataIndex: 'title', key: 'title', ellipsis: true },
+        {
+            title: 'Tiêu đề',
+            dataIndex: 'title',
+            key: 'title',
+            ellipsis: true,
+            render: (title: string, record: Post) => (
+                <Space>
+                    {title}
+                    {record.isVip && (
+                        <Tag color="gold" icon={<CrownOutlined />}>VIP</Tag>
+                    )}
+                </Space>
+            ),
+        },
         { title: 'Địa chỉ', dataIndex: 'address', key: 'address', ellipsis: true },
         {
             title: 'Giá',
@@ -98,7 +111,7 @@ const PostManagementPage: React.FC = () => {
         {
             title: 'Hành động',
             key: 'action',
-            width: 250,
+            width: 280,
             render: (_, record) => (
                 <Space>
                     {record.status === 1 && (
@@ -110,6 +123,11 @@ const PostManagementPage: React.FC = () => {
                                 Từ chối
                             </Button>
                         </>
+                    )}
+                    {record.isVip && (
+                        <Tag color="gold" icon={<CrownOutlined />}>
+                            VIP đến {record.vipExpiry ? formatDateTime(record.vipExpiry) : ''}
+                        </Tag>
                     )}
                     <Button size="small" icon={<EditOutlined />} />
                     <Popconfirm title="Bạn có chắc muốn xóa?" onConfirm={() => handleDelete(record.id)}>

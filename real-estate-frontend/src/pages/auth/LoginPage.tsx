@@ -13,7 +13,7 @@ const LoginPage: React.FC = () => {
     const location = useLocation();
     const { setAuth } = useAuthStore();
 
-    const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/admin';
+    const from = (location.state as { from?: { pathname: string } })?.from?.pathname;
 
     const onFinish = async (values: { username: string; password: string }) => {
         setLoading(true);
@@ -22,7 +22,13 @@ const LoginPage: React.FC = () => {
             const { user, accessToken, refreshToken } = res.data;
             setAuth(user, accessToken, refreshToken);
             message.success('Đăng nhập thành công!');
-            navigate(from, { replace: true });
+
+            if (from) {
+                navigate(from, { replace: true });
+            } else {
+                const isAdmin = user.userRoles?.some((ur: { role?: { code: string } }) => ur.role?.code === 'ADMIN');
+                navigate(isAdmin ? '/admin' : '/', { replace: true });
+            }
         } catch (error: unknown) {
             const err = error as { response?: { data?: { message?: string } } };
             message.error(err.response?.data?.message || 'Đăng nhập thất bại');

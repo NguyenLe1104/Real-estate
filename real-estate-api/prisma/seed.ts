@@ -66,6 +66,61 @@ async function main() {
         });
     }
 
+    // Create VIP packages
+    const vipPackages = [
+        {
+            name: 'VIP 7 ngày',
+            description: 'Gói VIP 7 ngày - Tin đăng được ưu tiên hiển thị',
+            durationDays: 7,
+            price: 100000,
+            priorityLevel: 1,
+            features: JSON.stringify({
+                highlight: true,
+                topPost: true,
+                badge: 'VIP 7',
+            }),
+        },
+        {
+            name: 'VIP 15 ngày',
+            description: 'Gói VIP 15 ngày - Tin đăng được ưu tiên cao',
+            durationDays: 15,
+            price: 180000,
+            priorityLevel: 2,
+            features: JSON.stringify({
+                highlight: true,
+                topPost: true,
+                badge: 'VIP 15',
+                featured: true,
+            }),
+        },
+        {
+            name: 'VIP 30 ngày',
+            description: 'Gói VIP 30 ngày - Ưu tiên cao nhất',
+            durationDays: 30,
+            price: 300000,
+            priorityLevel: 3,
+            features: JSON.stringify({
+                highlight: true,
+                topPost: true,
+                badge: 'VIP 30',
+                featured: true,
+                urgent: true,
+            }),
+        },
+    ];
+
+    for (const pkg of vipPackages) {
+        const existing = await prisma.vipPackage.findFirst({
+            where: { name: pkg.name },
+        });
+
+        if (!existing) {
+            await prisma.vipPackage.create({
+                data: pkg,
+            });
+        }
+    }
+
     console.log('Seed completed successfully!');
 }
 

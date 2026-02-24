@@ -8,6 +8,7 @@ import HouseListPage from '@/pages/public/HouseListPage';
 import HouseDetailPage from '@/pages/public/HouseDetailPage';
 import LandListPage from '@/pages/public/LandListPage';
 import LandDetailPage from '@/pages/public/LandDetailPage';
+import MyPostsPage from '@/pages/public/MyPostsPage';
 
 // Auth pages
 import LoginPage from '@/pages/auth/LoginPage';
@@ -29,6 +30,8 @@ import RoleManagementPage from '@/pages/admin/RoleManagementPage';
 import CategoryManagementPage from '@/pages/admin/CategoryManagementPage';
 import FavoriteManagementPage from '@/pages/admin/FavoriteManagementPage';
 import ProfilePage from '@/pages/admin/ProfilePage';
+import PaymentHistoryPage from '@/pages/admin/PaymentHistoryPage';
+import PaymentResultPage from '@/pages/public/PaymentResultPage';
 
 const router = createBrowserRouter([
     // Auth routes
@@ -55,14 +58,36 @@ const router = createBrowserRouter([
             { path: 'houses/:id', element: <HouseDetailPage /> },
             { path: 'lands', element: <LandListPage /> },
             { path: 'lands/:id', element: <LandDetailPage /> },
+            {
+                path: 'my-posts',
+                element: (
+                    <ProtectedRoute>
+                        <MyPostsPage />
+                    </ProtectedRoute>
+                ),
+            },
         ],
     },
 
-    // Admin routes (protected)
+    // Payment result page (public, after redirect from payment gateway)
+    {
+        path: '/payment/result',
+        element: <PaymentResultPage />,
+    },
+    {
+        path: '/payment/success',
+        element: <PaymentResultPage />,
+    },
+    {
+        path: '/payment/failed',
+        element: <PaymentResultPage />,
+    },
+
+    // Admin routes (protected - ADMIN only)
     {
         path: '/admin',
         element: (
-            <ProtectedRoute>
+            <ProtectedRoute requiredRoles={['ADMIN']}>
                 <AdminLayout />
             </ProtectedRoute>
         ),
@@ -97,6 +122,9 @@ const router = createBrowserRouter([
             // Favorites & Profile
             { path: 'favorites', element: <FavoriteManagementPage /> },
             { path: 'profile', element: <ProfilePage /> },
+
+            // VIP & Payment
+            { path: 'payment-history', element: <PaymentHistoryPage /> },
         ],
     },
 ]);

@@ -64,4 +64,7 @@ export class CreateHouseDto {
 export class UpdateHouseDto extends PartialType(CreateHouseDto) {
     @IsOptional()
     status?: number;
+
+    @IsOptional()
+    keepImageIds?: any; // ID các ảnh cũ cần giữ lại
 }

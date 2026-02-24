@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Table, Button, Space, Tag, Input, Popconfirm, message, Typography } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, EyeOutlined, SearchOutlined } from '@ant-design/icons';
+import { Table, Button, Space, Tag, Input, Popconfirm, message, Typography, Image } from 'antd';
+import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import type { ColumnsType /* TablePaginationConfig */ } from 'antd/es/table';
 import { houseApi } from '@/api';
@@ -50,6 +50,35 @@ const HouseManagementPage: React.FC = () => {
 
     const columns: ColumnsType<House> = [
         { title: 'Mã', dataIndex: 'code', key: 'code', width: 100 },
+        {
+            title: 'Ảnh',
+            dataIndex: 'images',
+            key: 'images',
+            width: 110,
+            render: (images: House['images']) => {
+                if (!images?.length) return <span style={{ color: '#ccc', fontSize: 12 }}>Chưa có</span>;
+                return (
+                    <Image.PreviewGroup items={images.map(img => ({ src: img.url }))}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <Image
+                                src={images[0].url}
+                                width={60}
+                                height={50}
+                                style={{ objectFit: 'cover', borderRadius: 4, cursor: 'pointer' }}
+                            />
+                            {images.length > 1 && (
+                                <span style={{
+                                    fontSize: 11, color: '#fff', background: '#1677ff',
+                                    borderRadius: 10, padding: '1px 6px', whiteSpace: 'nowrap',
+                                }}>
+                                    +{images.length - 1}
+                                </span>
+                            )}
+                        </div>
+                    </Image.PreviewGroup>
+                );
+            },
+        },
         { title: 'Tiêu đề', dataIndex: 'title', key: 'title', ellipsis: true },
         {
             title: 'Giá',
@@ -86,13 +115,8 @@ const HouseManagementPage: React.FC = () => {
                 <Space>
                     <Button
                         size="small"
-                        icon={<EyeOutlined />}
-                        onClick={() => navigate(`/houses/${record.id}`)}
-                    />
-                    <Button
-                        size="small"
-                        type="primary"
                         icon={<EditOutlined />}
+                        type="primary"
                         onClick={() => navigate(`/admin/houses/${record.id}/edit`)}
                     />
                     <Popconfirm

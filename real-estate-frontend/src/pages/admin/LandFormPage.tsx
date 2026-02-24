@@ -69,6 +69,14 @@ const LandFormPage: React.FC = () => {
                 }
             });
 
+            // Ảnh cũ cần giữ lại
+            fileList.forEach((file) => {
+                if (!file.originFileObj && file.uid) {
+                    formData.append('keepImageIds', file.uid);
+                }
+            });
+
+            // Ảnh mới upload
             fileList.forEach((file) => {
                 if (file.originFileObj) {
                     formData.append('images', file.originFileObj);
@@ -102,12 +110,17 @@ const LandFormPage: React.FC = () => {
             <Card>
                 <Form form={form} layout="vertical" onFinish={onFinish}>
                     <Row gutter={16}>
-                        <Col xs={24} md={16}>
+                        <Col xs={24} md={6}>
+                            <Form.Item name="code" label="Mã đất" rules={[{ required: true, message: 'Vui lòng nhập mã đất' }]}>
+                                <Input placeholder="VD: L001" />
+                            </Form.Item>
+                        </Col>
+                        <Col xs={24} md={12}>
                             <Form.Item name="title" label="Tiêu đề" rules={[{ required: true, message: 'Vui lòng nhập tiêu đề' }]}>
                                 <Input placeholder="Nhập tiêu đề" />
                             </Form.Item>
                         </Col>
-                        <Col xs={24} md={8}>
+                        <Col xs={24} md={6}>
                             <Form.Item name="categoryId" label="Danh mục">
                                 <Select placeholder="Chọn danh mục" allowClear options={categories.map((c) => ({ label: c.name, value: c.id }))} />
                             </Form.Item>

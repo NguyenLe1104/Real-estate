@@ -68,4 +68,7 @@ export class CreateLandDto {
 export class UpdateLandDto extends PartialType(CreateLandDto) {
     @IsOptional()
     status?: number;
+
+    @IsOptional()
+    keepImageIds?: any; // ID các ảnh cũ cần giữ lại
 }

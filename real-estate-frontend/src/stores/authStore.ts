@@ -41,8 +41,11 @@ export const useAuthStore = create<AuthState>()(
 
             hasRole: (roleCode: string) => {
                 const { user } = get();
-                if (!user?.userRoles) return false;
-                return user.userRoles.some((ur) => ur.role?.code === roleCode);
+                if (!user) return false;
+                // Support both flat roles array (from API) and userRoles relation
+                if (user.roles) return user.roles.includes(roleCode);
+                if (user.userRoles) return user.userRoles.some((ur) => ur.role?.code === roleCode);
+                return false;
             },
         }),
         {

@@ -15,7 +15,12 @@ export class LandController {
     constructor(private readonly landService: LandService) { }
 
     @Get()
-    findAll(@Query('page') page = 1, @Query('limit') limit = 10) {
+    findAll(
+        @Query('page') page = 1,
+        @Query('limit') limit = 10,
+        @Query('search') search?: string,
+    ) {
+        if (search) return this.landService.search(search, +page, +limit);
         return this.landService.findAll(+page, +limit);
     }
 

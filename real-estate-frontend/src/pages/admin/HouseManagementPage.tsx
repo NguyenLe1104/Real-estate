@@ -30,7 +30,7 @@ const HouseManagementPage: React.FC = () => {
             const res = await houseApi.getAll(params);
             const data = res.data;
             setHouses(data.data || data);
-            setTotal(data.meta?.total || 0);
+            setTotal(data.totalItems || data.meta?.total || 0);
         } catch {
             message.error('Lỗi tải dữ liệu');
         } finally {

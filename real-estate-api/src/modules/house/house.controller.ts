@@ -15,7 +15,12 @@ export class HouseController {
     constructor(private readonly houseService: HouseService) { }
 
     @Get()
-    findAll(@Query('page') page = 1, @Query('limit') limit = 10) {
+    findAll(
+        @Query('page') page = 1,
+        @Query('limit') limit = 10,
+        @Query('search') search?: string,
+    ) {
+        if (search) return this.houseService.search(search, +page, +limit);
         return this.houseService.findAll(+page, +limit);
     }
 

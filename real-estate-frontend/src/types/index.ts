@@ -10,6 +10,8 @@ export interface User {
     status: number;
     createdAt: string;
     updatedAt: string;
+    roles?: string[];
+    employeeId?: number | null;
     customer?: Customer;
     employee?: Employee;
     userRoles?: UserRole[];

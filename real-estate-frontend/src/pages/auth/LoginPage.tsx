@@ -26,7 +26,8 @@ const LoginPage: React.FC = () => {
             if (from) {
                 navigate(from, { replace: true });
             } else {
-                const isAdmin = user.userRoles?.some((ur: { role?: { code: string } }) => ur.role?.code === 'ADMIN');
+                const isAdmin = user.roles?.includes('ADMIN') ||
+                    user.userRoles?.some((ur: { role?: { code: string } }) => ur.role?.code === 'ADMIN');
                 navigate(isAdmin ? '/admin' : '/', { replace: true });
             }
         } catch (error: unknown) {

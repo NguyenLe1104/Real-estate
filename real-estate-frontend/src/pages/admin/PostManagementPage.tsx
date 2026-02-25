@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Table, Button, Space, Tag, Input, Popconfirm, message, Typography } from 'antd';
+import { Table, Button, Space, Tag, Input, Popconfirm, message, Typography, Image } from 'antd';
 import { EditOutlined, DeleteOutlined, SearchOutlined, CrownOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import { postApi } from '@/api';
@@ -73,6 +73,35 @@ const PostManagementPage: React.FC = () => {
     };
 
     const columns: ColumnsType<Post> = [
+        {
+            title: 'Ảnh',
+            dataIndex: 'images',
+            key: 'images',
+            width: 110,
+            render: (images: Post['images']) => {
+                if (!images?.length) return <span style={{ color: '#ccc', fontSize: 12 }}>Chưa có</span>;
+                return (
+                    <Image.PreviewGroup items={images.map(img => ({ src: img.url }))}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <Image
+                                src={images[0].url}
+                                width={60}
+                                height={50}
+                                style={{ objectFit: 'cover', borderRadius: 4, cursor: 'pointer' }}
+                            />
+                            {images.length > 1 && (
+                                <span style={{
+                                    fontSize: 11, color: '#fff', background: '#1677ff',
+                                    borderRadius: 10, padding: '1px 6px', whiteSpace: 'nowrap',
+                                }}>
+                                    +{images.length - 1}
+                                </span>
+                            )}
+                        </div>
+                    </Image.PreviewGroup>
+                );
+            },
+        },
         {
             title: 'Tiêu đề',
             dataIndex: 'title',

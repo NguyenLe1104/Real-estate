@@ -69,6 +69,14 @@ const HouseFormPage: React.FC = () => {
                 }
             });
 
+            // Ảnh cũ cần giữ lại (có uid = id từ DB, không có originFileObj)
+            fileList.forEach((file) => {
+                if (!file.originFileObj && file.uid) {
+                    formData.append('keepImageIds', file.uid);
+                }
+            });
+
+            // Ảnh mới upload
             fileList.forEach((file) => {
                 if (file.originFileObj) {
                     formData.append('images', file.originFileObj);
@@ -107,7 +115,16 @@ const HouseFormPage: React.FC = () => {
             <Card>
                 <Form form={form} layout="vertical" onFinish={onFinish}>
                     <Row gutter={16}>
-                        <Col xs={24} md={16}>
+                        <Col xs={24} md={6}>
+                            <Form.Item
+                                name="code"
+                                label="Mã nhà"
+                                rules={[{ required: true, message: 'Vui lòng nhập mã nhà' }]}
+                            >
+                                <Input placeholder="VD: H001" />
+                            </Form.Item>
+                        </Col>
+                        <Col xs={24} md={12}>
                             <Form.Item
                                 name="title"
                                 label="Tiêu đề"
@@ -116,7 +133,7 @@ const HouseFormPage: React.FC = () => {
                                 <Input placeholder="Nhập tiêu đề" />
                             </Form.Item>
                         </Col>
-                        <Col xs={24} md={8}>
+                        <Col xs={24} md={6}>
                             <Form.Item name="categoryId" label="Danh mục">
                                 <Select
                                     placeholder="Chọn danh mục"

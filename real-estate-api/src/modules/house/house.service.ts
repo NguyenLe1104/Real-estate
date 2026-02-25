@@ -137,16 +137,33 @@ export class HouseService {
             },
         });
 
-        if (files?.length) {
-            await this.prisma.houseImage.deleteMany({ where: { houseId: id } });
-            const uploads = await this.cloudinaryService.uploadImages(files);
-            await this.prisma.houseImage.createMany({
-                data: uploads.map((upload, index) => ({
-                    url: upload.secure_url,
+        if (files?.length || dto.keepImageIds !== undefined) {
+            // Parse danh sách ID ảnh cần giữ
+            const keepIds: number[] = dto.keepImageIds
+                ? (Array.isArray(dto.keepImageIds) ? dto.keepImageIds : [dto.keepImageIds])
+                    .map(Number).filter((n) => !isNaN(n))
+                : [];
+
+            // Xóa ảnh không nằm trong keepIds
+            await this.prisma.houseImage.deleteMany({
+                where: {
                     houseId: id,
-                    position: index + 1,
-                })),
+                    ...(keepIds.length > 0 ? { id: { notIn: keepIds } } : {}),
+                },
             });
+
+            // Upload và thêm ảnh mới
+            if (files?.length) {
+                const existingCount = await this.prisma.houseImage.count({ where: { houseId: id } });
+                const uploads = await this.cloudinaryService.uploadImages(files);
+                await this.prisma.houseImage.createMany({
+                    data: uploads.map((upload, index) => ({
+                        url: upload.secure_url,
+                        houseId: id,
+                        position: existingCount + index + 1,
+                    })),
+                });
+            }
         }
 
         return {

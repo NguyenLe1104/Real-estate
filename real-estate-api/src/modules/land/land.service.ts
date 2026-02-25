@@ -139,16 +139,33 @@ export class LandService {
             },
         });
 
-        if (files?.length) {
-            await this.prisma.landImage.deleteMany({ where: { landId: id } });
-            const uploads = await this.cloudinaryService.uploadImages(files);
-            await this.prisma.landImage.createMany({
-                data: uploads.map((upload, index) => ({
-                    url: upload.secure_url,
+        if (files?.length || dto.keepImageIds !== undefined) {
+            // Parse danh sách ID ảnh cần giữ
+            const keepIds: number[] = dto.keepImageIds
+                ? (Array.isArray(dto.keepImageIds) ? dto.keepImageIds : [dto.keepImageIds])
+                    .map(Number).filter((n) => !isNaN(n))
+                : [];
+
+            // Xóa ảnh không nằm trong keepIds
+            await this.prisma.landImage.deleteMany({
+                where: {
                     landId: id,
-                    position: index + 1,
-                })),
+                    ...(keepIds.length > 0 ? { id: { notIn: keepIds } } : {}),
+                },
             });
+
+            // Upload và thêm ảnh mới
+            if (files?.length) {
+                const existingCount = await this.prisma.landImage.count({ where: { landId: id } });
+                const uploads = await this.cloudinaryService.uploadImages(files);
+                await this.prisma.landImage.createMany({
+                    data: uploads.map((upload, index) => ({
+                        url: upload.secure_url,
+                        landId: id,
+                        position: existingCount + index + 1,
+                    })),
+                });
+            }
         }
 
         return {

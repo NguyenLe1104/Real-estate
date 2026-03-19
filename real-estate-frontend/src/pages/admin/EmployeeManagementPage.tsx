@@ -1,59 +1,64 @@
 import { useEffect, useState } from "react";
-import { Table, Button, Space, Modal, Form, Input, DatePicker, Popconfirm, message } from "antd";
+import {
+  Table, Button, Space, Modal, Form, Input,
+  DatePicker, Popconfirm, message, Tag
+} from "antd";
 import { PlusOutlined, EditOutlined, DeleteOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { employeeApi } from "@/api";
 
 const EmployeeManagementPage = () => {
 
-  const [data,setData] = useState<any[]>([]);
-  const [loading,setLoading] = useState(false);
-  const [open,setOpen] = useState(false);
-  const [editing,setEditing] = useState<any>(null);
+  const [data, setData] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<any>(null);
   const [form] = Form.useForm();
 
+  // ================= LOAD DATA =================
   const loadData = async () => {
-    setLoading(true);
-    try{
-      const res = await employeeApi.getAll({page:1,limit:10});
+    try {
+      setLoading(true);
+      const res = await employeeApi.getAll({ page: 1, limit: 10 });
       setData(res.data.data);
-    }catch(err){
+    } catch {
       message.error("Load employee failed");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
-  useEffect(()=>{
+  useEffect(() => {
     loadData();
-  },[]);
+  }, []);
 
-  const openModal = (record?:any)=>{
+  // ================= MODAL =================
+  const openModal = (record?: any) => {
     setEditing(record || null);
     form.resetFields();
 
-    if(record){
+    if (record) {
       form.setFieldsValue({
         ...record,
-        fullName:record.user?.fullName,
-        email:record.user?.email,
-        phone:record.user?.phone,
-        startDate:record.startDate ? dayjs(record.startDate) : null
+        fullName: record.user?.fullName,
+        email: record.user?.email,
+        phone: record.user?.phone,
+        startDate: record.startDate ? dayjs(record.startDate) : null
       });
     }
 
     setOpen(true);
   };
 
-  const submit = async () => {
-
-    const values = await form.validateFields();
-  
-    if (values.startDate) {
-      values.startDate = values.startDate.format("YYYY-MM-DD");
-    }
-  
+  // ================= SUBMIT =================
+  const handleSubmit = async () => {
     try {
-  
+      const values = await form.validateFields();
+
+      if (values.startDate) {
+        values.startDate = values.startDate.format("YYYY-MM-DD");
+      }
+
       if (editing) {
         await employeeApi.update(editing.id, values);
         message.success("Update success");
@@ -61,88 +66,105 @@ const EmployeeManagementPage = () => {
         await employeeApi.create(values);
         message.success("Create success");
       }
-  
+
       setOpen(false);
       loadData();
-  
-    } catch (err: any) {
-  
-      console.log("FULL ERROR:", err);
-  
-      if (err.response) {
-        console.log("STATUS:", err.response.status);
-        console.log("DATA:", err.response.data);
-      }
-  
-      const errorMessage =
-        err?.response?.data?.message ||
-        err?.message ||
-        "Save failed";
-  
-      message.error(errorMessage);
+
+    } catch {
+      message.error("Save failed");
     }
   };
 
-  const remove = async(id:number)=>{
-    await employeeApi.delete(id);
-    message.success("Disabled");
-    loadData();
+  // ================= DELETE (SOFT) =================
+  const remove = async (id: number) => {
+    try {
+      await employeeApi.delete(id);
+      message.success("Đã khóa tài khoản");
+
+      // update UI ngay
+      setData(prev =>
+        prev.map(item =>
+          item.id === id
+            ? {
+                ...item,
+                user: item.user
+                  ? { ...item.user, status: 0 }
+                  : item.user
+              }
+            : item
+        )
+      );
+
+
+    } catch {
+      message.error("Xóa thất bại");
+    }
   };
 
+  // ================= RENDER HELPERS =================
+  const renderUserField = (field: string) => (_: any, r: any) =>
+    r.user?.[field] || "—";
+
+  const renderStatus = (_: any, r: any) => {
+    const isActive = r.user?.status === 1;
+    return (
+      <Tag color={isActive ? "green" : "red"}>
+        {isActive ? "Hoạt động" : "Đã khóa"}
+      </Tag>
+    );
+  };
+
+  const renderDate = (field: string, format = "DD/MM/YYYY") => (_: any, r: any) =>
+    r[field] ? dayjs(r[field]).format(format) : "";
+
+  // ================= COLUMNS =================
   const columns = [
+    { title: "Mã NV", dataIndex: "code" },
+    { title: "Họ tên", render: renderUserField("fullName") },
+    { title: "Email", render: renderUserField("email") },
+    { title: "SĐT", render: renderUserField("phone") },
+    { title: "Trạng thái", render: renderStatus },
+    { title: "Ngày vào", render: renderDate("startDate") },
+    { title: "Ngày tạo", render: renderDate("createdAt") },
     {
-      title:"Mã NV",
-      dataIndex:"code"
-    },
-    {
-      title:"Họ tên",
-      render:(_:any,r:any)=>r.user?.fullName
-    },
-    {
-      title:"Email",
-      render:(_:any,r:any)=>r.user?.email
-    },
-    {
-      title:"SĐT",
-      render:(_:any,r:any)=>r.user?.phone
-    },
-    {
-      title:"Ngày vào",
-      render:(_:any,r:any)=>r.startDate ? dayjs(r.startDate).format("DD/MM/YYYY") : ""
-    },
-    {
-      title:"Ngày tạo",
-      render:(_:any,r:any)=>dayjs(r.createdAt).format("DD/MM/YYYY")
-    },
-    {
-      title:"Hành động",
-      render:(_:any,r:any)=>(
+      title: "Hành động",
+      render: (_: any, r: any) => (
         <Space>
-          <Button icon={<EditOutlined/>} onClick={()=>openModal(r)}/>
-          <Popconfirm title="Delete?" onConfirm={()=>remove(r.id)}>
-            <Button danger icon={<DeleteOutlined/>}/>
+          <Button icon={<EditOutlined />} onClick={() => openModal(r)} />
+
+          <Popconfirm
+            title="Bạn có chắc muốn khóa?"
+            onConfirm={() => remove(r.id)}
+            disabled={r.user?.status === 0}
+          >
+            <Button
+              danger
+              icon={<DeleteOutlined />}
+              disabled={r.user?.status === 0}
+            />
           </Popconfirm>
         </Space>
       )
     }
   ];
 
-  return(
+  return (
     <div>
 
-      <div style={{display:"flex",justifyContent:"space-between",marginBottom:20}}>
+      {/* HEADER */}
+      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 20 }}>
         <h2>Quản lý nhân viên</h2>
 
-        {/* GIỮ NGUYÊN NÚT THÊM MỚI */}
         <Button
           type="primary"
-          icon={<PlusOutlined/>}
-          onClick={()=>openModal()}
+          icon={<PlusOutlined />}
+          onClick={() => openModal()}
         >
           Thêm mới
         </Button>
       </div>
 
+      {/* TABLE */}
       <Table
         rowKey="id"
         columns={columns}
@@ -150,65 +172,48 @@ const EmployeeManagementPage = () => {
         loading={loading}
       />
 
+      {/* MODAL */}
       <Modal
         title={editing ? "Sửa nhân viên" : "Thêm nhân viên"}
         open={open}
-        onOk={submit}
-        onCancel={()=>setOpen(false)}
+        onOk={handleSubmit}
+        onCancel={() => setOpen(false)}
       >
-
         <Form layout="vertical" form={form}>
 
-          <Form.Item
-            label="Mã NV"
-            name="code"
-            rules={[{required:true}]}
-          >
-            <Input/>
+          <Form.Item name="code" label="Mã NV" rules={[{ required: true }]}>
+            <Input />
           </Form.Item>
 
           {!editing && (
             <>
-              <Form.Item
-                label="Username"
-                name="username"
-                rules={[{required:true}]}
-              >
-                <Input/>
+              <Form.Item name="username" label="Username" rules={[{ required: true }]}>
+                <Input />
               </Form.Item>
 
-              <Form.Item
-                label="Password"
-                name="password"
-                rules={[{required:true}]}
-              >
-                <Input.Password/>
+              <Form.Item name="password" label="Password" rules={[{ required: true }]}>
+                <Input.Password />
               </Form.Item>
             </>
           )}
 
-          <Form.Item
-            label="Họ tên"
-            name="fullName"
-            rules={[{required:true}]}
-          >
-            <Input/>
+          <Form.Item name="fullName" label="Họ tên" rules={[{ required: true }]}>
+            <Input />
           </Form.Item>
 
-          <Form.Item label="Email" name="email">
-            <Input/>
+          <Form.Item name="email" label="Email">
+            <Input />
           </Form.Item>
 
-          <Form.Item label="SĐT" name="phone">
-            <Input/>
+          <Form.Item name="phone" label="SĐT">
+            <Input />
           </Form.Item>
 
-          <Form.Item label="Ngày vào" name="startDate">
-            <DatePicker style={{width:"100%"}}/>
+          <Form.Item name="startDate" label="Ngày vào">
+            <DatePicker style={{ width: "100%" }} />
           </Form.Item>
 
         </Form>
-
       </Modal>
 
     </div>

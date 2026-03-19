@@ -181,25 +181,21 @@ export class EmployeeService {
         };
     }
 
-    async delete(id: number) {
-
+        async delete(id: number) {
         const employee = await this.prisma.employee.findUnique({
             where: { id },
+            include: { user: true }
         });
-    
+
         if (!employee) {
             throw new NotFoundException('Employee not found');
         }
-    
+
         await this.prisma.user.update({
             where: { id: employee.userId },
-            data: {
-                status: 0,
-            },
+            data: { status: 0 }
         });
-    
-        return {
-            message: 'Employee disabled successfully',
-        };
+
+        return { message: 'Disabled account employee' };
     }
 }

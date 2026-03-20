@@ -1,10 +1,11 @@
 import { Injectable, UnauthorizedException, BadRequestException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
+import { Prisma } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import ms from 'ms';
 import { PrismaService } from '../../prisma/prisma.service';
-import { MailService } from '../../common/mail/mail.service';
+import { MailProducerService } from '../../common/mail/mail-producer.service';
 import { generateOTP } from '../../common/utils/generate-otp';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto, ConfirmRegisterDto } from './dto/register.dto';
@@ -20,7 +21,7 @@ export class AuthService {
         private prisma: PrismaService,
         private jwtService: JwtService,
         private configService: ConfigService,
-        private mailService: MailService,
+        private mailProducer: MailProducerService, // thay thế MailService trực tiếp
     ) {
         this.googleClient = new OAuth2Client(this.configService.get('GOOGLE_CLIENT_ID'));
         this.maxTokens = parseInt(this.configService.get('MAX_REFRESH_TOKENS_PER_USER') || '5');
@@ -165,7 +166,8 @@ export class AuthService {
       <p>Your OTP code is: <strong>${otp}</strong></p>
       <p>This code expires in 5 minutes.</p>
     `;
-        await this.mailService.sendEmail(email, 'Registration OTP Verification', html);
+        // Publish lên RabbitMQ – không block request, OTP vẫn được lưu DB rồi
+        this.mailProducer.sendMail(email, 'Registration OTP Verification', html);
 
         return {
             message: 'OTP sent to your email. Please verify to complete registration.',
@@ -221,7 +223,8 @@ export class AuthService {
       <p>Your OTP code is: <strong>${otp}</strong></p>
       <p>This code expires in 5 minutes.</p>
     `;
-        await this.mailService.sendEmail(email, 'Password Reset OTP', html);
+        // Publish lên RabbitMQ – không block request
+        this.mailProducer.sendMail(email, 'Password Reset OTP', html);
 
         return { message: 'OTP sent to your email' };
     }
@@ -261,9 +264,29 @@ export class AuthService {
 
         if (!user) {
             const hashPass = await bcrypt.hash('google_oauth_user', 10);
-            user = await this.prisma.user.create({
-                data: { username: email, email, password: hashPass, fullName: name || '', status: 1 },
-            });
+            for (let i = 0; i < 5; i++) {
+                const pseudoPhone = `G${Math.floor(Math.random() * 10 ** 14).toString().padStart(14, '0')}`;
+
+                try {
+                    user = await this.prisma.user.create({
+                        data: { username: email, email, phone: pseudoPhone, password: hashPass, fullName: name || '', status: 1 },
+                    });
+                    break;
+                } catch (error) {
+                    const isUniquePhoneConflict =
+                        error instanceof Prisma.PrismaClientKnownRequestError &&
+                        error.code === 'P2002' &&
+                        String(error.meta?.target || '').includes('users_phone_key');
+
+                    if (!isUniquePhoneConflict || i === 4) {
+                        throw error;
+                    }
+                }
+            }
+
+            if (!user) {
+                throw new BadRequestException('Không thể tạo tài khoản Google, vui lòng thử lại');
+            }
         }
 
         const customerRole = await this.prisma.role.findUnique({ where: { code: 'CUSTOMER' } });

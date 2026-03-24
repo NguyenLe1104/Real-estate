@@ -11,12 +11,15 @@ import LandDetailPage from '@/pages/public/LandDetailPage';
 import MyPostsPage from '@/pages/public/MyPostsPage';
 import NewsPage from '@/pages/public/NewsPage';
 import NewsDetailPage from '@/pages/public/NewsDetailPage';
+import FavoritesPage from '@/pages/public/FavoritesPage';
+import AboutMe from '@/pages/public/AboutMe';
 
 // Auth pages
 import LoginPage from '@/pages/auth/LoginPage';
 import RegisterPage from '@/pages/auth/RegisterPage';
 import ForgotPasswordPage from '@/pages/auth/ForgotPasswordPage';
-
+import ConfirmOTP from '@/pages/auth/ConfirmOTP';
+import PublicProfilePage from '@/pages/auth/ProfilePage';
 // Admin pages
 import DashboardPage from '@/pages/admin/DashboardPage';
 import HouseManagementPage from '@/pages/admin/HouseManagementPage';
@@ -36,6 +39,7 @@ import ProfilePage from '@/pages/admin/ProfilePage';
 import PaymentHistoryPage from '@/pages/admin/PaymentHistoryPage';
 import PaymentResultPage from '@/pages/public/PaymentResultPage';
 
+
 const router = createBrowserRouter([
     // Auth routes
     {
@@ -47,8 +51,20 @@ const router = createBrowserRouter([
         element: <RegisterPage />,
     },
     {
+        path: '/otp',
+        element: <ConfirmOTP />,
+    },
+    {
         path: '/forgot-password',
         element: <ForgotPasswordPage />,
+    },
+    {
+        path: 'profile',
+        element: (
+            <ProtectedRoute>
+                <PublicProfilePage />
+            </ProtectedRoute>
+        )
     },
 
     // Public routes
@@ -63,6 +79,15 @@ const router = createBrowserRouter([
             { path: 'lands/:id', element: <LandDetailPage /> },
             { path: 'posts', element: <NewsPage /> },
             { path: '/posts/:id', element: <NewsDetailPage /> },
+            { path: 'about', element: <AboutMe /> },
+            {
+                path: 'favorites',
+                element: (
+
+                    <FavoritesPage />
+
+                ),
+            },
             {
                 path: 'my-posts',
                 element: (

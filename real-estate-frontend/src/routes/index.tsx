@@ -9,6 +9,8 @@ import HouseDetailPage from '@/pages/public/HouseDetailPage';
 import LandListPage from '@/pages/public/LandListPage';
 import LandDetailPage from '@/pages/public/LandDetailPage';
 import MyPostsPage from '@/pages/public/MyPostsPage';
+import NewsPage from '@/pages/public/NewsPage';
+import NewsDetailPage from '@/pages/public/NewsDetailPage';
 
 // Auth pages
 import LoginPage from '@/pages/auth/LoginPage';
@@ -59,6 +61,8 @@ const router = createBrowserRouter([
             { path: 'houses/:id', element: <HouseDetailPage /> },
             { path: 'lands', element: <LandListPage /> },
             { path: 'lands/:id', element: <LandDetailPage /> },
+            { path: 'posts', element: <NewsPage /> },
+            { path: '/posts/:id', element: <NewsDetailPage /> },
             {
                 path: 'my-posts',
                 element: (

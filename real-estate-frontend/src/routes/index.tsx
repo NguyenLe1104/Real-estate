@@ -10,6 +10,7 @@ import LandListPage from '@/pages/public/LandListPage';
 import LandDetailPage from '@/pages/public/LandDetailPage';
 import MyPostsPage from '@/pages/public/MyPostsPage';
 import FavoritesPage from '@/pages/public/FavoritesPage';
+import AboutMe from '@/pages/public/AboutMe';
 
 // Auth pages
 import LoginPage from '@/pages/auth/LoginPage';
@@ -74,6 +75,7 @@ const router = createBrowserRouter([
             { path: 'houses/:id', element: <HouseDetailPage /> },
             { path: 'lands', element: <LandListPage /> },
             { path: 'lands/:id', element: <LandDetailPage /> },
+            { path: 'about', element: <AboutMe /> },
             {
                 path: 'favorites',
                 element: (

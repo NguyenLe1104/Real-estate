@@ -20,12 +20,6 @@ export class PostController {
         return this.postService.findApproved(+page, +limit);
     }
 
-    // ✅ API VIP
-    @Get('vip')
-    findVip() {
-        return this.postService.findVip();
-    }
-
     @Get('pending')
     @UseGuards(AuthGuard('jwt'), RolesGuard)
     @Roles('ADMIN')

@@ -14,22 +14,18 @@ const API_URL = "http://localhost:5000/api/posts/approved";
 const getThumbnail = (images?: PostImage[]) => {
   if (!images?.length)
     return "https://via.placeholder.com/600x400?text=No+Image";
-
   return [...images].sort((a, b) => a.position - b.position)[0]?.url;
 };
 
 const NewsPage = () => {
   const navigate = useNavigate();
 
-  const [posts, setPosts] = useState<Post[]>([]);
-  const [vipPosts, setVipPosts] = useState<Post[]>([]);
-
+  // Gộp chung vào một state duy nhất
+  const [allPosts, setAllPosts] = useState<Post[]>([]);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
-
   const [hasMore, setHasMore] = useState(false);
   const [expanded, setExpanded] = useState(false);
-
   const [favorites, setFavorites] = useState<number[]>([]);
 
   useEffect(() => {
@@ -42,31 +38,26 @@ const NewsPage = () => {
       const updated = prev.includes(id)
         ? prev.filter((x) => x !== id)
         : [...prev, id];
-
       localStorage.setItem("favorites", JSON.stringify(updated));
       return updated;
     });
   };
 
-  // ===== FETCH =====
+  // ===== FETCH POSTS (KHÔNG TÁCH MẢNG) =====
   const fetchPosts = async (pageNumber = 1, append = false) => {
     try {
       setLoading(true);
-
-      const res = await axios.get(
-        `${API_URL}?page=${pageNumber}&limit=6`
-      );
-
+      const res = await axios.get(`${API_URL}?page=${pageNumber}&limit=6`);
       const payload = res?.data || {};
-      const list: Post[] = payload.data || [];
+      const newList: Post[] = payload.data || [];
 
       setHasMore(pageNumber < (payload.totalPages || 1));
 
       if (append) {
-        setPosts((prev) => [...prev, ...list]);
+        setAllPosts((prev) => [...prev, ...newList]);
         setExpanded(true);
       } else {
-        setPosts(list);
+        setAllPosts(newList);
         setExpanded(false);
       }
     } catch (e) {
@@ -76,47 +67,40 @@ const NewsPage = () => {
     }
   };
 
-  const fetchVip = async () => {
-    try {
-      const res = await axios.get("http://localhost:5000/api/posts/vip");
-      setVipPosts(res.data || []);
-    } catch (e) {
-      console.error("VIP fetch error:", e);
-    }
-  };
-
   useEffect(() => {
     fetchPosts(1);
-    fetchVip();
   }, []);
 
-  // ===== HERO =====
-  const heroPost = useMemo(() => {
-    return vipPosts[0] || posts[0];
-  }, [vipPosts, posts]);
+  // ===== DỮ LIỆU ĐÃ SẮP XẾP: VIP TRƯỚC -> THƯỜNG SAU =====
+  const sortedPosts = useMemo(() => {
+    return [...allPosts].sort((a, b) => {
+      // Ưu tiên bài VIP lên đầu
+      if (a.isVip && !b.isVip) return -1;
+      if (!a.isVip && b.isVip) return 1;
+      // Nếu cùng loại thì sắp xếp theo thời gian mới nhất
+      return (
+        new Date(b.postedAt || b.createdAt || 0).getTime() -
+        new Date(a.postedAt || a.createdAt || 0).getTime()
+      );
+    });
+  }, [allPosts]);
 
-  // ===== LATEST =====
+  // ===== HERO (Lấy bài đầu tiên trong danh sách đã sắp xếp) =====
+  const heroPost = useMemo(() => sortedPosts[0], [sortedPosts]);
+
+  // ===== LATEST (Danh sách bài mới nhất cho sidebar) =====
   const latestPosts = useMemo(() => {
-    return [...posts]
-      .sort(
-        (a, b) =>
-          new Date(b.postedAt || b.createdAt || 0).getTime() -
-          new Date(a.postedAt || a.createdAt || 0).getTime()
+    return [...allPosts]
+      .sort((a, b) =>
+        new Date(b.postedAt || b.createdAt || 0).getTime() -
+        new Date(a.postedAt || a.createdAt || 0).getTime()
       )
       .slice(0, 3);
-  }, [posts]);
+  }, [allPosts]);
 
   // ===== MOST VIEWED =====
-  const mostViewed = useMemo(() => {
-    return posts.slice(0, 5);
-  }, [posts]);
+  const mostViewed = useMemo(() => sortedPosts.slice(0, 5), [sortedPosts]);
 
-  //  CHIA BÀI THƯỜNG
-  const normalPosts = useMemo(() => {
-    return posts.filter((p) => !p.isVip);
-  }, [posts]);
-
-  // ===== ACTION =====
   const handleLoadMore = async () => {
     if (!hasMore || loading) return;
     const next = page + 1;
@@ -133,99 +117,80 @@ const NewsPage = () => {
     <div className="bg-gray-100 min-h-screen">
       <div className="max-w-[1200px] mx-auto px-4 py-6">
 
-        {/* HERO + RIGHT */}
+        {/* HERO + SIDEBAR */}
         {heroPost && (
           <div className="grid grid-cols-12 gap-4 mb-6">
-
-            {/* HERO */}
             <div
               onClick={() => navigate(`/posts/${heroPost.id}`)}
-              className="col-span-8 relative rounded-2xl overflow-hidden cursor-pointer"
+              className="col-span-12 lg:col-span-8 relative rounded-2xl overflow-hidden cursor-pointer shadow-lg group"
             >
               <img
                 src={getThumbnail(heroPost.images)}
-                className="w-full h-[340px] object-cover"
+                className="w-full h-[340px] object-cover group-hover:scale-105 transition duration-500"
+                alt="hero"
               />
-              <div className="absolute inset-0 bg-black/40" />
-
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
               <div className="absolute bottom-4 left-4 text-white">
-                <h2 className="text-xl font-bold">{heroPost.title}</h2>
-                <div className="text-sm">
-                  {heroPost.district}, {heroPost.city}
+                {heroPost.isVip && (
+                  <span className="bg-orange-500 text-white text-[10px] font-bold px-2 py-0.5 rounded mb-2 inline-block">VIP</span>
+                )}
+                <h2 className="text-xl font-bold line-clamp-2">{heroPost.title}</h2>
+                <div className="text-sm opacity-80">
+                  📍 {heroPost.district}, {heroPost.city}
                 </div>
               </div>
             </div>
 
-            {/* RIGHT */}
-            <div className="col-span-4 flex flex-col gap-4">
-
-              <div className="bg-white rounded-2xl p-4 shadow">
-                <h3 className="font-bold mb-3">Bài viết mới đăng</h3>
-
+            <div className="col-span-12 lg:col-span-4 flex flex-col gap-4">
+              <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+                <h3 className="font-bold mb-3 text-gray-800 flex items-center gap-2">
+                  <span className="w-1 h-4 bg-orange-500 rounded-full"></span>
+                  Bài viết mới đăng
+                </h3>
                 {latestPosts.map((p) => (
                   <div
                     key={p.id}
                     onClick={() => navigate(`/posts/${p.id}`)}
-                    className="text-sm mb-2 cursor-pointer hover:text-orange-500"
+                    className="text-sm mb-2.5 cursor-pointer hover:text-orange-600 transition line-clamp-1 border-b border-gray-50 pb-1.5 last:border-0"
                   >
-                    {p.title}
+                    • {p.title}
                   </div>
                 ))}
               </div>
 
-              <div className="bg-white p-4 rounded-2xl shadow">
-                <h3 className="font-bold mb-3">Bài viết xem nhiều</h3>
-
+              <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
+                <h3 className="font-bold mb-3 text-gray-800 flex items-center gap-2">
+                  <span className="w-1 h-4 bg-blue-500 rounded-full"></span>
+                  Bài viết xem nhiều
+                </h3>
                 {mostViewed.map((p, i) => (
                   <div
                     key={p.id}
                     onClick={() => navigate(`/posts/${p.id}`)}
-                    className="flex gap-2 py-2 border-b cursor-pointer hover:text-orange-500"
+                    className="flex gap-3 py-2 border-b border-gray-50 last:border-0 cursor-pointer group"
                   >
-                    <span className="text-orange-500 font-bold">
+                    <span className="text-orange-500 font-black italic opacity-50 group-hover:opacity-100 transition">
                       {i + 1}
                     </span>
-                    <p className="text-sm">{p.title}</p>
+                    <p className="text-sm line-clamp-1 group-hover:text-orange-600 transition">{p.title}</p>
                   </div>
                 ))}
               </div>
-
             </div>
           </div>
         )}
 
-        {/* VIP */}
+        {/* DANH SÁCH TỔNG HỢP */}
         <div className="mb-6">
-          <h2 className="text-lg font-bold text-orange-500 mb-3">
-            🔥 Bài viết VIP nổi bật
+          <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
+            🏠 Danh sách tin đăng
+            <span className="text-xs font-normal text-gray-400 bg-gray-200 px-2 py-0.5 rounded-full">
+              {allPosts.length} tin
+            </span>
           </h2>
 
           <div className="space-y-4">
-            {vipPosts.length === 0 ? (
-              <div className="text-gray-400 text-sm">
-                Hiện chưa có bài VIP
-              </div>
-            ) : (
-              vipPosts.map((post) => (
-                <NewsCard
-                  key={post.id}
-                  post={post}
-                  isFavorite={favorites.includes(post.id)}
-                  onToggleFavorite={() => toggleFavorite(post.id)}
-                />
-              ))
-            )}
-          </div>
-        </div>
-
-        {/* ===== BÀI THƯỜNG ===== */}
-        <div className="mb-6">
-          <h2 className="text-lg font-bold mb-3">
-            📄 Bài viết mới nhất
-          </h2>
-
-          <div className="space-y-4">
-            {normalPosts.map((post) => (
+            {sortedPosts.map((post) => (
               <NewsCard
                 key={post.id}
                 post={post}
@@ -233,25 +198,37 @@ const NewsPage = () => {
                 onToggleFavorite={() => toggleFavorite(post.id)}
               />
             ))}
-          </div>
 
-          <div className="text-center mt-4">
-            {hasMore && (
-              <button
-                onClick={handleLoadMore}
-                className="px-4 py-2 bg-orange-500 text-white rounded"
-              >
-                {loading ? "Đang tải..." : "Xem thêm"}
-              </button>
+            {loading && (
+              <div className="text-center py-4 text-gray-500">Đang tải thêm tin...</div>
             )}
 
-            {!hasMore && expanded && (
+            {!loading && sortedPosts.length === 0 && (
+              <div className="text-center py-10 bg-white rounded-2xl shadow-sm text-gray-400">
+                Không tìm thấy bài viết nào
+              </div>
+            )}
+          </div>
+
+          {/* NÚT ĐIỀU KHIỂN */}
+          <div className="text-center mt-8">
+            {hasMore ? (
               <button
-                onClick={handleCollapse}
-                className="px-4 py-2 border rounded"
+                onClick={handleLoadMore}
+                disabled={loading}
+                className="px-8 py-2.5 bg-white border border-orange-500 text-orange-500 font-bold rounded-full hover:bg-orange-500 hover:text-white transition-all shadow-md active:scale-95 disabled:opacity-50"
               >
-                Thu gọn
+                {loading ? "Đang xử lý..." : "Xem thêm tin đăng"}
               </button>
+            ) : (
+              expanded && (
+                <button
+                  onClick={handleCollapse}
+                  className="px-8 py-2.5 border border-gray-300 text-gray-500 font-medium rounded-full hover:bg-gray-100 transition shadow-sm"
+                >
+                  Thu gọn danh sách
+                </button>
+              )
             )}
           </div>
         </div>

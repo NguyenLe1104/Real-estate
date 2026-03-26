@@ -54,6 +54,18 @@ const maskPhone = (phone?: string, show = false) => {
     return phone.slice(0, half) + "*".repeat(phone.length - half);
 };
 
+/**
+ * Hàm xử lý tên hiển thị linh hoạt
+ */
+const getDisplayName = (fullName?: string) => {
+    if (!fullName) return "Người dùng";
+    // Kiểm tra nếu là System Admin thì đổi tên thương hiệu
+    if (fullName.trim() === "System Admin") {
+        return "Ban quản trị Black'S City";
+    }
+    return fullName;
+};
+
 const NewsDetailPage = () => {
     const { id } = useParams();
 
@@ -61,7 +73,7 @@ const NewsDetailPage = () => {
     const [list, setList] = useState<Post[]>([]);
     const [showPhone, setShowPhone] = useState(false);
 
-    // ===== FETCH ALL =====
+    // ===== FETCH DATA =====
     const fetchData = async () => {
         try {
             const [detailRes, listRes] = await Promise.all([
@@ -74,7 +86,6 @@ const NewsDetailPage = () => {
             window.scrollTo(0, 0);
         } catch (err: any) {
             let errorMessage = "Có lỗi xảy ra, vui lòng thử lại!";
-
             if (err.response) {
                 errorMessage = err.response.data?.message || `Lỗi server: ${err.response.status}`;
             } else if (err.request) {
@@ -92,12 +103,12 @@ const NewsDetailPage = () => {
         fetchData();
     }, [id]);
 
-    // ===== RELATED =====
+    // ===== RELATED POSTS =====
     const related = useMemo(() => {
         return list.filter((p) => p.id !== Number(id));
     }, [list, id]);
 
-    // ===== USER POSTS =====
+    // ===== OTHER POSTS FROM SAME USER =====
     const userPosts = useMemo(() => {
         if (!post?.user?.id) return [];
         return list.filter(
@@ -105,16 +116,19 @@ const NewsDetailPage = () => {
         );
     }, [list, post]);
 
-    if (!post) return <div className="p-6">Đang tải...</div>;
+    if (!post) return <div className="p-6 text-center font-medium">Đang tải dữ liệu...</div>;
+
+    const isAdmin = post.user?.fullName === "System Admin";
 
     return (
         <div className="bg-gray-100 min-h-screen py-6">
             <div className="max-w-[1200px] mx-auto px-4">
 
-                {/* IMAGE + TITLE */}
+                {/* BANNER IMAGE + TITLE */}
                 <div className="bg-white rounded-2xl p-4 shadow mb-6">
                     <img
                         src={getThumbnail(post.images)}
+                        alt={post.title}
                         className="w-full h-[400px] object-cover rounded-xl"
                     />
 
@@ -131,49 +145,51 @@ const NewsDetailPage = () => {
 
                 <div className="grid grid-cols-12 gap-6">
 
-                    {/* LEFT */}
-                    <div className="col-span-8 space-y-6">
+                    {/* LEFT CONTENT */}
+                    <div className="col-span-12 lg:col-span-8 space-y-6">
 
-                        {/* ĐẶC ĐIỂM */}
+                        {/* ĐẶC ĐIỂM BẤT ĐỘNG SẢN */}
                         <div className="bg-white rounded-2xl p-4 shadow">
-                            <h2 className="font-bold mb-4">Đặc điểm bất động sản</h2>
+                            <h2 className="font-bold mb-4 text-lg border-b pb-2">Đặc điểm bất động sản</h2>
 
                             <div className="grid grid-cols-2 gap-y-3 text-sm">
-                                <div>Diện tích</div>
+                                <div className="text-gray-500">Diện tích</div>
                                 <div className="font-medium">{post.area} m²</div>
 
-                                <div>Giá</div>
-                                <div className="font-medium">{formatPrice(post.price)}</div>
+                                <div className="text-gray-500">Giá</div>
+                                <div className="font-medium text-red-600">{formatPrice(post.price)}</div>
 
-                                <div>Hướng</div>
+                                <div className="text-gray-500">Hướng</div>
                                 <div className="font-medium">
                                     {post.direction || "Không rõ"}
                                 </div>
 
-                                <div>Khu vực</div>
+                                <div className="text-gray-500">Khu vực</div>
                                 <div className="font-medium">
                                     {post.district}, {post.city}
                                 </div>
                             </div>
                         </div>
 
-                        {/* MÔ TẢ */}
+                        {/* MÔ TẢ CHI TIẾT */}
                         <div className="bg-white rounded-2xl p-4 shadow">
-                            <h2 className="font-bold mb-3">Mô tả chi tiết</h2>
-
-                            <p className="text-gray-700 whitespace-pre-line">
+                            <h2 className="font-bold mb-3 text-lg border-b pb-2">Mô tả chi tiết</h2>
+                            <p className="text-gray-700 whitespace-pre-line leading-relaxed">
                                 {post.description}
                             </p>
 
-                            <div className="mt-4 bg-gray-100 p-3 rounded-xl flex justify-between">
-                                <span>
-                                    📞 {maskPhone(post.user?.phone, showPhone)}
-                                </span>
+                            <div className="mt-6 bg-blue-50 p-4 rounded-xl flex items-center justify-between border border-blue-100">
+                                <div className="flex items-center gap-2">
+                                    <span className="text-lg">📞</span>
+                                    <span className="font-bold text-blue-700">
+                                        {maskPhone(post.user?.phone, showPhone)}
+                                    </span>
+                                </div>
 
                                 {!showPhone ? (
                                     <button
                                         onClick={() => setShowPhone(true)}
-                                        className="text-blue-500 text-sm"
+                                        className="bg-blue-600 text-white px-4 py-1.5 rounded-lg text-sm font-medium hover:bg-blue-700 transition"
                                     >
                                         Hiện số
                                     </button>
@@ -181,9 +197,9 @@ const NewsDetailPage = () => {
                                     <button
                                         onClick={() => {
                                             navigator.clipboard.writeText(post.user?.phone || "");
-                                            alert("Bạn đã sao chép!");
+                                            alert("Đã sao chép số điện thoại!");
                                         }}
-                                        className="text-blue-500 text-sm"
+                                        className="text-blue-600 text-sm font-medium underline"
                                     >
                                         Sao chép
                                     </button>
@@ -191,25 +207,28 @@ const NewsDetailPage = () => {
                             </div>
                         </div>
 
-                        {/* RELATED */}
+                        {/* CÁC BÀI VIẾT TƯƠNG TỰ */}
                         <div className="bg-white rounded-2xl p-4 shadow">
-                            <h2 className="font-bold mb-4">Các bài viết tương tự</h2>
-
-                            <div className="grid grid-cols-3 gap-4">
-                                {related.map((p) => (
-                                    <NewsMiniCard key={p.id} post={p} />
-                                ))}
+                            <h2 className="font-bold mb-4 text-lg">Các bài viết tương tự</h2>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                                {related.length > 0 ? (
+                                    related.slice(0, 3).map((p) => (
+                                        <NewsMiniCard key={p.id} post={p} />
+                                    ))
+                                ) : (
+                                    <p className="text-gray-400 text-sm">Không có bài viết tương tự</p>
+                                )}
                             </div>
                         </div>
 
-                        {/* USER POSTS */}
+                        {/* BÀI VIẾT KHÁC CỦA NGƯỜI DÙNG */}
                         {userPosts.length > 0 && (
-                            <div className="bg-white rounded-2xl p-4 shadow">
-                                <h2 className="font-bold mb-4">
-                                    Tin khác của {post.user?.fullName}
+                            <div className="bg-white rounded-2xl p-4 shadow border-t-4 border-blue-500">
+                                <h2 className="font-bold mb-4 text-lg">
+                                    Bài viết khác của {getDisplayName(post.user?.fullName)}
                                 </h2>
 
-                                <div className="grid grid-cols-3 gap-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                                     {userPosts.map((p) => (
                                         <NewsMiniCard key={p.id} post={p} />
                                     ))}
@@ -218,19 +237,39 @@ const NewsDetailPage = () => {
                         )}
                     </div>
 
-                    {/* RIGHT */}
-                    <div className="col-span-4">
-                        <div className="bg-white rounded-2xl p-4 shadow">
-                            <h3 className="font-bold mb-3">Người đăng</h3>
+                    {/* RIGHT SIDEBAR (NGƯỜI ĐĂNG) */}
+                    <div className="col-span-12 lg:col-span-4">
+                        <div className="bg-white rounded-2xl p-5 shadow sticky top-6">
+                            <h3 className="font-bold mb-4 text-gray-500 uppercase text-xs tracking-wider">Người đăng bài viết</h3>
 
-                            <div className="text-sm">
-                                <div className="font-medium">
-                                    {post.user?.fullName || "Người dùng"}
+                            <div className="flex flex-col items-center text-center">
+                                {/* Avatar giả định */}
+                                <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 text-2xl font-bold mb-3">
+                                    {getDisplayName(post.user?.fullName).charAt(0)}
                                 </div>
 
-                                <div className="text-gray-500 mt-1">
-                                    📞 {maskPhone(post.user?.phone, showPhone)}
+                                <div className="font-bold text-lg flex items-center gap-1.5">
+                                    {getDisplayName(post.user?.fullName)}
+                                    {isAdmin && (
+                                        <span title="Tài khoản xác thực" className="text-blue-500 text-sm">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                                                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+                                            </svg>
+                                        </span>
+                                    )}
                                 </div>
+
+                                <div className="text-gray-500 mt-2 flex items-center gap-2 bg-gray-50 px-4 py-2 rounded-full w-full justify-center border border-gray-100">
+                                    <span>📞</span>
+                                    <span className="font-semibold">{maskPhone(post.user?.phone, showPhone)}</span>
+                                </div>
+
+                                <button
+                                    onClick={() => setShowPhone(true)}
+                                    className="w-full mt-4 bg-green-600 text-white py-3 rounded-xl font-bold hover:bg-green-700 transition shadow-lg shadow-green-100"
+                                >
+                                    GỬI YÊU CẦU LIÊN HỆ
+                                </button>
                             </div>
                         </div>
                     </div>

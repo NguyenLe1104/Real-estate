@@ -50,68 +50,83 @@ export class PostService {
         return { message: 'Post created and pending approval', data: fullPost };
     }
 
-    // ✅ LIST THƯỜNG (KHÔNG CHỨA VIP)
     async findApproved(page = 1, limit = 6) {
         const skip = (page - 1) * limit;
         const now = new Date();
 
-        const [posts, total] = await Promise.all([
+        // Lấy tất cả posts với thông tin VIP
+        const [allPosts, total] = await Promise.all([
             this.prisma.post.findMany({
                 where: { status: 2 },
                 include: {
                     user: { select: { id: true, username: true, fullName: true, phone: true } },
                     images: { select: { id: true, url: true, position: true } },
+                    vipSubscriptions: {
+                        where: {
+                            status: 1, // active
+                            endDate: { gte: now },
+                        },
+                        include: {
+                            package: {
+                                select: {
+                                    name: true,
+                                    priorityLevel: true,
+                                },
+                            },
+                        },
+                        orderBy: {
+                            package: {
+                                priorityLevel: 'desc',
+                            },
+                        },
+                        take: 1, // Chỉ lấy VIP cao nhất
+                    },
                 },
                 orderBy: { postedAt: 'desc' },
             }),
             this.prisma.post.count({ where: { status: 2 } }),
         ]);
 
-        const mappedPosts = posts.map(post => {
-            const isVip =
-                post.isVip === true &&   // ✅ boolean rồi, KHÔNG so sánh với 1
-                (!post.vipExpiry || new Date(post.vipExpiry) > now);
+        // Sắp xếp: VIP posts lên đầu (theo priority level), sau đó là các posts thường
+        const sortedPosts = allPosts.sort((a, b) => {
+            const aVip = a.vipSubscriptions?.[0];
+            const bVip = b.vipSubscriptions?.[0];
 
-            return {
-                ...post,
-                isVip,
-            };
-        });
+            // Nếu cả 2 đều VIP, sort theo priority level
+            if (aVip && bVip) {
+                return bVip.package.priorityLevel - aVip.package.priorityLevel;
+            }
 
-        const sortedPosts = mappedPosts.sort((a, b) => {
-            if (a.isVip && !b.isVip) return -1;
-            if (!a.isVip && b.isVip) return 1;
+            // Nếu chỉ a là VIP
+            if (aVip) return -1;
+
+            // Nếu chỉ b là VIP
+            if (bVip) return 1;
+
+            // Cả 2 đều không VIP, giữ nguyên thứ tự (đã sort by postedAt desc)
             return 0;
         });
 
+        // Pagination
         const paginatedPosts = sortedPosts.slice(skip, skip + limit);
+
+        // Format response - thêm isVip flag và ẩn vipSubscriptions khỏi response
+        const formattedPosts = paginatedPosts.map(post => {
+            const { vipSubscriptions, ...postData } = post;
+            return {
+                ...postData,
+                isVip: vipSubscriptions?.length > 0,
+                vipPackageName: vipSubscriptions?.[0]?.package?.name || null,
+                vipPriorityLevel: vipSubscriptions?.[0]?.package?.priorityLevel || null,
+            };
+        });
 
         return {
             currentPage: page,
             totalPages: Math.ceil(total / limit),
             totalItems: total,
-            data: paginatedPosts,
+            data: formattedPosts,
         };
-    }
-
-    // ✅ LIST VIP
-    async findVip() {
-        const posts = await this.prisma.post.findMany({
-            where: {
-                status: 2,
-                isVip: true, // ✅ đúng field
-            },
-            include: {
-                user: { select: { id: true, username: true, fullName: true, phone: true } },
-                images: { select: { id: true, url: true, position: true } },
-            },
-            orderBy: { postedAt: 'desc' },
-        });
-
-        return posts.map(post => ({
-            ...post,
-            isVip: true, // luôn VIP
-        }));
     }
 
     async findPending() {

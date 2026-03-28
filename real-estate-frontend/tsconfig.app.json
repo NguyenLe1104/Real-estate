@@ -25,6 +25,7 @@
     "paths": {
       "@/*": ["./src/*"]
     },
+    "ignoreDeprecations": "5.0",
     /* Linting */
     "strict": true,
     "noUnusedLocals": true,

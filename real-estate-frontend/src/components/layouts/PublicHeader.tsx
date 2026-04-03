@@ -10,7 +10,7 @@ const navigationItems = [
   { label: "Nhà Ở", href: "/houses" },
   { label: "Đất Đai", href: "/lands" },
   { label: "Bài Viết", href: "/posts" },
-  { label: "Đăng Bài Viết", href: "/news" },
+  { label: "Đăng Bài Viết", href: "/posts/new" },
   { label: "Về Chúng Tôi", href: "/about" },
   { label: "Liên Hệ", href: "/contact" },
 ];

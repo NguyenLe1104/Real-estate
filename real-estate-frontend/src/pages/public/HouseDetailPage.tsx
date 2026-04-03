@@ -6,7 +6,6 @@ import {
     HeartOutlined,
     HeartFilled,
     CalendarOutlined,
-    EnvironmentOutlined,
 } from '@ant-design/icons';
 import { houseApi, favoriteApi, recommendationApi } from '@/api';
 import { Loading } from '@/components/common';

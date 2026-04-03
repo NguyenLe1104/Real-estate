@@ -1,19 +1,36 @@
+
 import { useEffect, useState } from 'react';
 import { CKEditor } from '@ckeditor/ckeditor5-react';
 import {
-    Table, Button, Space, Tag, Input, Popconfirm,
-    message, Typography, Image, Form, Modal, Upload, Tabs
+    Table,
+    Button,
+    Space,
+    Tag,
+    Input,
+    Popconfirm,
+    message,
+    Typography,
+    Image,
+    Form,
+    Modal,
+    Upload,
+    Tabs,
+    Tooltip,
+    Select
 } from 'antd';
-import ClassicEditor from '@ckeditor/ckeditor5-build-classic/build/ckeditor';
+import { useVietnamAddress } from '@/hooks/UseAddressVN';
+import ClassicEditor from '@ckeditor/ckeditor5-build-classic';
 import {
-    EditOutlined, 
-    DeleteOutlined, 
-    SearchOutlined, 
+    EditOutlined,
+    DeleteOutlined,
+    SearchOutlined,
     PlusOutlined,
     AppstoreOutlined,
     ClockCircleOutlined,
     CheckCircleOutlined,
-    CloseCircleOutlined
+    CloseCircleOutlined,
+    CheckOutlined,
+    CloseOutlined
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import { postApi } from '@/api';
@@ -23,6 +40,44 @@ import { DEFAULT_PAGE_SIZE, POST_STATUS_LABELS } from '@/constants';
 
 const { Title } = Typography;
 const { TabPane } = Tabs;
+const { Option } = Select;
+
+
+const EditorWrapper = ({ value, onChange }: { value?: string; onChange?: (value: string) => void }) => {
+    return (
+        <>
+            <style>{`
+                .ck-editor__editable[role="textbox"] {
+                    height: 200px !important;
+                    overflow-y: auto;
+                }
+                .ck-toolbar {
+                    border-top-left-radius: 6px !important;
+                    border-top-right-radius: 6px !important;
+                }
+                .ck-editor__main {
+                    border-bottom-left-radius: 6px !important;
+                    border-bottom-right-radius: 6px !important;
+                }
+            `}</style>
+
+            <CKEditor
+                editor={ClassicEditor as any}
+                data={value || ''}
+                config={{
+                    licenseKey: 'GPL',
+                    placeholder: 'Nhập mô tả chi tiết về bài đăng bất động sản...',
+                    toolbar: [
+                        'heading', '|', 'bold', 'italic', 'link',
+                        'bulletedList', 'numberedList', 'blockQuote', 'undo', 'redo'
+                    ]
+                }}
+                onChange={(_event, editor) => onChange?.(editor.getData())}
+            />
+        </>
+    );
+};
+// =======================================================
 
 const PostManagementPage: React.FC = () => {
     const [allPosts, setAllPosts] = useState<Post[]>([]);
@@ -38,12 +93,14 @@ const PostManagementPage: React.FC = () => {
     const [fileList, setFileList] = useState<any[]>([]);
     const [form] = Form.useForm();
 
-    // Load dữ liệu
+    // Sử dụng Hook chung
+    const { provinces, districts, wards, loadDistricts, loadWards } = useVietnamAddress();
+
     const loadPosts = async () => {
         setLoading(true);
         try {
             const res = await postApi.getAll();
-            setAllPosts(res.data || []);
+            setAllPosts(res.data?.data || res.data || []);
         } catch (err) {
             console.error("Load posts error:", err);
             message.error('Lỗi tải dữ liệu');
@@ -83,13 +140,20 @@ const PostManagementPage: React.FC = () => {
 
         if (record) {
             form.setFieldsValue(record);
+
+            // Load quận/huyện và phường/xã nếu đang sửa
+            if (record.city) loadDistricts(record.city);
+            if (record.district) loadWards(record.district);
+
             if (record.images?.length) {
-                setFileList(record.images.map(img => ({
-                    uid: img.id.toString(),
-                    name: `image-${img.id}`,
-                    status: 'done',
-                    url: img.url,
-                })));
+                setFileList(
+                    record.images.map(img => ({
+                        uid: img.id.toString(),
+                        name: `image-${img.id}`,
+                        status: 'done',
+                        url: img.url,
+                    }))
+                );
             }
         }
         setModalOpen(true);
@@ -101,8 +165,9 @@ const PostManagementPage: React.FC = () => {
             const formData = new FormData();
 
             Object.keys(values).forEach(key => {
-                if (key !== 'images' && values[key] !== undefined && values[key] !== null && values[key] !== '') {
-                    formData.append(key, String(values[key]));
+                const value = values[key];
+                if (key !== 'images' && value !== undefined && value !== null && value !== '') {
+                    formData.append(key, String(value));
                 }
             });
 
@@ -150,60 +215,87 @@ const PostManagementPage: React.FC = () => {
     };
 
     const columns: ColumnsType<Post> = [
-        { title: 'Ảnh', width: 80, render: (_, r) => r.images?.length ? <Image src={r.images[0].url} width={60} height={50} /> : '—' },
+        {
+            title: 'Ảnh',
+            width: 80,
+            render: (_, record) => record.images?.length ? (
+                <Image src={record.images[0].url} width={60} height={50} style={{ objectFit: 'cover', borderRadius: '4px' }} />
+            ) : '—'
+        },
         {
             title: 'Tiêu đề',
             width: 220,
-            render: (_, r) => (
+            render: (_, record) => (
                 <Space>
-                    {r.title}
-                    {r.isVip && <Tag color="gold">VIP</Tag>}
+                    <span style={{ fontWeight: 500 }}>{record.title}</span>
+                    {record.isVip && <Tag color="gold">VIP</Tag>}
                 </Space>
             )
         },
         {
             title: 'Mô tả',
             dataIndex: 'description',
-            key: 'description',
-            width: 550,                    // Tăng rộng hơn nữa
+            width: 450,
             render: (text: string) => !text ? '—' : (
-                <div 
+                <div
                     dangerouslySetInnerHTML={{ __html: text }}
                     style={{
                         lineHeight: '1.6',
-                        fontSize: '13.5px',
-                        whiteSpace: 'normal',
-                        wordBreak: 'break-word'
+                        fontSize: '13px',
+                        maxHeight: '100px',
+                        overflow: 'hidden',
+                        display: '-webkit-box',
+                        WebkitLineClamp: 3,
+                        WebkitBoxOrient: 'vertical'
                     }}
                 />
             )
         },
-        { title: 'Địa chỉ', dataIndex: 'address', width: 280 },
-        { title: 'Giá', width: 160, render: (_, r) => formatCurrency(r.price) },
-        { title: 'Ngày đăng', width: 150, render: (_, r) => formatDateTime(r.postedAt) },
+        { title: 'Địa chỉ', dataIndex: 'address', width: 250 },
+        {
+            title: 'Giá',
+            width: 150,
+            render: (_, record) => <span style={{ color: '#f5222d', fontWeight: 'bold' }}>{formatCurrency(record.price)}</span>
+        },
+        { title: 'Ngày đăng', width: 150, render: (_, record) => formatDateTime(record.postedAt) },
         {
             title: 'Trạng thái',
             width: 120,
-            render: (_, r) => (
-                <Tag color={r.status === 1 ? 'orange' : r.status === 2 ? 'green' : 'red'}>
-                    {POST_STATUS_LABELS[r.status]}
+            render: (_, record) => (
+                <Tag color={record.status === 1 ? 'orange' : record.status === 2 ? 'green' : 'red'}>
+                    {POST_STATUS_LABELS[record.status]}
                 </Tag>
             )
         },
         {
             title: 'Hành động',
-            width: 240,
-            render: (_, r) => (
-                <Space size="middle">
-                    {r.status === 1 && (
+            width: 180,
+            align: 'center',
+            render: (_, record) => (
+                <Space wrap>
+                    {record.status === 1 && (
                         <>
-                            <Button type="primary" onClick={() => handleStatusChange(r.id, 2)}>Duyệt</Button>
-                            <Button danger onClick={() => handleStatusChange(r.id, 3)}>Từ chối</Button>
+                            <Tooltip title="Duyệt">
+                                <Button size="small" type="primary" icon={<CheckOutlined />} onClick={() => handleStatusChange(record.id, 2)} />
+                            </Tooltip>
+                            <Tooltip title="Từ chối">
+                                <Button size="small" danger icon={<CloseOutlined />} onClick={() => handleStatusChange(record.id, 3)} />
+                            </Tooltip>
                         </>
                     )}
-                    <Button icon={<EditOutlined />} onClick={() => openModal(r)}>Sửa</Button>
-                    <Popconfirm title="Bạn có chắc muốn xóa bài đăng này?" onConfirm={() => handleDelete(r.id)}>
-                        <Button danger icon={<DeleteOutlined />}>Xóa</Button>
+                    <Tooltip title="Sửa">
+                        <Button size="small" icon={<EditOutlined />} onClick={() => openModal(record)} />
+                    </Tooltip>
+                    <Popconfirm
+                        title="Bạn có chắc muốn xóa bài đăng này?"
+                        onConfirm={() => handleDelete(record.id)}
+                        okText="Xóa"
+                        cancelText="Hủy"
+                        okButtonProps={{ danger: true }}
+                    >
+                        <Tooltip title="Xóa">
+                            <Button size="small" danger icon={<DeleteOutlined />} />
+                        </Tooltip>
                     </Popconfirm>
                 </Space>
             )
@@ -212,67 +304,39 @@ const PostManagementPage: React.FC = () => {
 
     return (
         <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
-                <Title level={3}>Quản lý bài đăng</Title>
-                <Button type="primary" icon={<PlusOutlined />} onClick={() => openModal()}>
+            <style>{`
+                .ant-table {
+                    background: #fff;
+                    border-radius: 8px;
+                }
+                .ant-table-body {
+                    overflow-y: auto !important;
+                    min-height: 500px;
+                }
+            `}</style>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 24, alignItems: 'center' }}>
+                <Title level={3} style={{ margin: 0 }}>Quản lý bài đăng</Title>
+                <Button type="primary" size="large" icon={<PlusOutlined />} onClick={() => openModal()} style={{ borderRadius: '8px' }}>
                     Thêm bài đăng
                 </Button>
             </div>
 
             <Tabs
                 activeKey={activeTab}
-                onChange={(key) => { 
-                    setActiveTab(key as any); 
-                    setPage(1); 
-                }}
-                style={{ marginBottom: 16 }}
-                tabBarStyle={{ marginBottom: 0 }}
+                onChange={(key) => { setActiveTab(key as any); setPage(1); }}
+                style={{ marginBottom: 20 }}
             >
-                <TabPane 
-                    tab={
-                        <span style={{ fontSize: '15px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <AppstoreOutlined style={{ fontSize: '18px' }} /> 
-                            Tất cả ({allPosts.length})
-                        </span>
-                    } 
-                    key="all" 
-                />
-                
-                <TabPane 
-                    tab={
-                        <span style={{ fontSize: '15px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <ClockCircleOutlined style={{ fontSize: '18px', color: '#faad14' }} /> 
-                            Chờ duyệt ({allPosts.filter(p => p.status === 1).length})
-                        </span>
-                    } 
-                    key="pending" 
-                />
-                
-                <TabPane 
-                    tab={
-                        <span style={{ fontSize: '15px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <CheckCircleOutlined style={{ fontSize: '18px', color: '#52c41a' }} /> 
-                            Đã duyệt ({allPosts.filter(p => p.status === 2).length})
-                        </span>
-                    } 
-                    key="approved" 
-                />
-                
-                <TabPane 
-                    tab={
-                        <span style={{ fontSize: '15px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <CloseCircleOutlined style={{ fontSize: '18px', color: '#f5222d' }} /> 
-                            Đã từ chối ({allPosts.filter(p => p.status === 3).length})
-                        </span>
-                    } 
-                    key="rejected" 
-                />
+                <TabPane tab={<span><AppstoreOutlined /> Tất cả ({allPosts.length})</span>} key="all" />
+                <TabPane tab={<span><ClockCircleOutlined style={{ color: '#faad14' }} /> Chờ duyệt ({allPosts.filter(p => p.status === 1).length})</span>} key="pending" />
+                <TabPane tab={<span><CheckCircleOutlined style={{ color: '#52c41a' }} /> Đã duyệt ({allPosts.filter(p => p.status === 2).length})</span>} key="approved" />
+                <TabPane tab={<span><CloseCircleOutlined style={{ color: '#f5222d' }} /> Đã từ chối ({allPosts.filter(p => p.status === 3).length})</span>} key="rejected" />
             </Tabs>
 
             <Input
                 placeholder="Tìm kiếm theo tiêu đề hoặc địa chỉ..."
                 prefix={<SearchOutlined />}
-                style={{ marginBottom: 16, maxWidth: 400 }}
+                style={{ marginBottom: 20, maxWidth: 400, borderRadius: '8px' }}
                 value={search}
                 onChange={(e) => { setSearch(e.target.value); setPage(1); }}
                 allowClear
@@ -283,18 +347,15 @@ const PostManagementPage: React.FC = () => {
                 columns={columns}
                 dataSource={filteredPosts}
                 loading={loading}
-                scroll={{ x: 'max-content' }}
-                style={{ width: '100%' }}               
+                scroll={{ x: 'max-content', y: 500 }}
+                sticky
                 pagination={{
                     current: page,
-                    total: allPosts.filter(p => {
-                        if (activeTab === "pending") return p.status === 1;
-                        if (activeTab === "approved") return p.status === 2;
-                        if (activeTab === "rejected") return p.status === 3;
-                        return true;
-                    }).length,
                     pageSize: DEFAULT_PAGE_SIZE,
-                    onChange: setPage,
+                    total: allPosts.length,
+                    onChange: (p: number) => setPage(p),
+                    showSizeChanger: false,
+                    style: { marginTop: 20 }
                 }}
             />
 
@@ -303,7 +364,7 @@ const PostManagementPage: React.FC = () => {
                 open={modalOpen}
                 onOk={handleSubmit}
                 onCancel={() => setModalOpen(false)}
-                width={850}
+                width={900}   // Tăng nhẹ để hiển thị 3 cột địa chỉ
                 okText="Lưu"
                 cancelText="Hủy"
             >
@@ -312,78 +373,83 @@ const PostManagementPage: React.FC = () => {
                         <Input placeholder="Nhập tiêu đề bài đăng" />
                     </Form.Item>
 
-                    <Form.Item name="city" label="Tỉnh"><Input /></Form.Item>
-                    <Form.Item name="district" label="Quận"><Input /></Form.Item>
-                    <Form.Item name="ward" label="Phường"><Input /></Form.Item>
-                    <Form.Item name="address" label="Địa chỉ"><Input /></Form.Item>
-                    <Form.Item name="price" label="Giá"><Input type="number" /></Form.Item>
-                    <Form.Item name="area" label="Diện tích"><Input type="number" /></Form.Item>
-                    <Form.Item name="direction" label="Hướng"><Input /></Form.Item>
+                    {/* Phần Địa chỉ sử dụng Select + Hook */}
+                    <Space style={{ display: 'flex', width: '100%' }} align="baseline">
+                        <Form.Item name="city" label="Tỉnh/Thành phố" rules={[{ required: true }]}>
+                            <Select
+                                placeholder="Chọn Tỉnh/Thành phố"
+                                onChange={loadDistricts}
+                                style={{ width: '100%' }}
+                                showSearch
+                            >
+                                {provinces.map(p => (
+                                    <Option key={p.code} value={p.name}>{p.name}</Option>
+                                ))}
+                            </Select>
+                        </Form.Item>
 
-                    <Form.Item 
-                        name="description" 
-                        label="Mô tả" 
-                        rules={[{ required: true, message: 'Vui lòng nhập mô tả' }]}
-                    >
-                        <div style={{ border: '1px solid #d9d9d9', borderRadius: '6px', overflow: 'hidden' }}>
-                            <style>{`
-                                .ck-editor__editable_inline:not(.ck-comment__input *) {
-                                    min-height: 200px !important;
-                                }
-                            `}</style>
-                            <CKEditor
-                                editor={ClassicEditor as any}
-                                data={form.getFieldValue('description') || ''}
-                                onChange={(_, editor) => form.setFieldsValue({ description: editor.getData() || '' })}
-                                onReady={(editor) => {
-                                    setTimeout(() => {
-                                        if (editor?.ui?.view?.editable?.element) {
-                                            editor.ui.view.editable.element.style.minHeight = '420px';
-                                        }
-                                    }, 300);
-                                }}
-                                config={{
-                                    licenseKey: 'GPL',
-                                    placeholder: 'Nhập mô tả chi tiết về bất động sản...',
-                                    toolbar: [
-                                        'sourceEditing', '|', 'heading', '|',
-                                        'bold', 'italic', '|', 'link', '|',
-                                        'bulletedList', 'numberedList', '|',
-                                        'blockQuote', '|', 'undo', 'redo'
-                                    ]
-                                }}
-                            />
-                        </div>
+                        <Form.Item name="district" label="Quận/Huyện" rules={[{ required: true }]}>
+                            <Select
+                                placeholder="Chọn Quận/Huyện"
+                                onChange={loadWards}
+                                disabled={!districts.length}
+                                style={{ width: '100%' }}
+                                showSearch
+                            >
+                                {districts.map(d => (
+                                    <Option key={d.code} value={d.name}>{d.name}</Option>
+                                ))}
+                            </Select>
+                        </Form.Item>
+
+                        <Form.Item name="ward" label="Phường/Xã" rules={[{ required: true }]}>
+                            <Select
+                                placeholder="Chọn Phường/Xã"
+                                disabled={!wards.length}
+                                style={{ width: '100%' }}
+                                showSearch
+                            >
+                                {wards.map(w => (
+                                    <Option key={w.code} value={w.name}>{w.name}</Option>
+                                ))}
+                            </Select>
+                        </Form.Item>
+                    </Space>
+
+                    <Form.Item name="address" label="Địa chỉ cụ thể">
+                        <Input placeholder="Số nhà, tên đường..." />
                     </Form.Item>
 
-                    <Form.Item label="Ảnh">
-    <Upload
-        multiple
-        listType="picture-card"           // Đổi sang picture-card để đẹp hơn
-        fileList={fileList}
-        onChange={({ fileList: newFileList }) => setFileList(newFileList)}
-        onRemove={async (file) => {
-            // Nếu là ảnh cũ (có url) và đang sửa bài
-            if (file.url && editingPost) {
-                // Bạn có thể gọi API xóa ảnh nếu backend hỗ trợ
-                // Hiện tại chỉ xóa khỏi danh sách hiển thị
-                console.log("Xóa ảnh cũ:", file.url);
-            }
-            return true; // Cho phép xóa
-        }}
-        beforeUpload={() => false}        // Không tự upload lên server ngay
-    >
-        <div>
-            <PlusOutlined />
-            <div style={{ marginTop: 8 }}>Thêm ảnh</div>
-        </div>
-    </Upload>
-    
-    <div style={{ marginTop: 8, color: '#999', fontSize: '12px' }}>
-        • Có thể chọn nhiều ảnh<br />
-        • Khi sửa: ảnh cũ sẽ hiển thị, bạn có thể xóa ảnh cũ hoặc thêm ảnh mới
-    </div>
-</Form.Item>
+                    <Space style={{ display: 'flex', width: '100%' }} align="baseline">
+                        <Form.Item name="price" label="Giá (VNĐ)" rules={[{ required: true }]}>
+                            <Input type="number" style={{ width: '100%' }} />
+                        </Form.Item>
+                        <Form.Item name="area" label="Diện tích (m²)" rules={[{ required: true }]}>
+                            <Input type="number" />
+                        </Form.Item>
+                        <Form.Item name="direction" label="Hướng">
+                            <Input />
+                        </Form.Item>
+                    </Space>
+
+                    <Form.Item name="description" label="Mô tả" rules={[{ required: true, message: 'Vui lòng nhập mô tả' }]}>
+                        <EditorWrapper />
+                    </Form.Item>
+
+                    <Form.Item label="Ảnh bài đăng">
+                        <Upload
+                            multiple
+                            listType="picture-card"
+                            fileList={fileList}
+                            onChange={({ fileList }) => setFileList(fileList)}
+                            beforeUpload={() => false}
+                        >
+                            <div>
+                                <PlusOutlined />
+                                <div style={{ marginTop: 8 }}>Thêm ảnh</div>
+                            </div>
+                        </Upload>
+                    </Form.Item>
                 </Form>
             </Modal>
         </div>
@@ -391,3 +457,5 @@ const PostManagementPage: React.FC = () => {
 };
 
 export default PostManagementPage;
+
+

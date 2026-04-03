@@ -40,10 +40,20 @@ export class PostController {
     @Get('all')
     @UseGuards(AuthGuard('jwt'), RolesGuard)
     @Roles('ADMIN')
-    findAll() {
-        return this.postService.findAll();
+    findAll(
+        @Query('page') page?: string, 
+        @Query('limit') limit?: string,
+        @Query('status') status?: string,
+        @Query('search') search?: string
+    ) {
+        return this.postService.findAll({
+            page: page ? +page : 1,
+            limit: limit ? +limit : 10,
+            status: status ? +status : undefined,
+            search: search
+        });
     }
-
+  
     @Get('my-posts')
     @UseGuards(AuthGuard('jwt'))
     findByUser(@Req() req: any) {
@@ -66,22 +76,6 @@ export class PostController {
         return this.postService.create(dto, req.user.id, files);
     }
 
-    @Put(':id')
-    @UseInterceptors(FilesInterceptor('images', 10))
-    update(
-        @Param('id', ParseIntPipe) id: number,
-        @Body(new ValidationPipe({ 
-            transform: true,
-            whitelist: true,
-            forbidNonWhitelisted: true 
-        })) dto: UpdatePostDto,
-        @UploadedFiles() files: Express.Multer.File[],   // vẫn giữ nguyên
-    ) {
-        console.log('📸 Số ảnh nhận được:', files?.length || 0);
-        console.log('📝 DTO:', dto);
-        return this.postService.update(id, dto, files);
-    }
-
     @Put(':id/approve')
     @UseGuards(AuthGuard('jwt'), RolesGuard)
     @Roles('ADMIN')
@@ -96,9 +90,27 @@ export class PostController {
         return this.postService.reject(id);
     }
 
+    @Put(':id')
+    @UseGuards(AuthGuard('jwt'))
+    @UseInterceptors(FilesInterceptor('images', 10))
+    update(
+        @Param('id', ParseIntPipe) id: number,
+        @Body(new ValidationPipe({ 
+            transform: true,
+            whitelist: true,
+            forbidNonWhitelisted: true 
+        })) dto: UpdatePostDto,
+        @UploadedFiles() files: Express.Multer.File[],
+        @Req() req: any,
+    ) {
+        return this.postService.update(id, dto, req.user.id, files); 
+    }
+
     @Delete(':id')
     @UseGuards(AuthGuard('jwt'))
-    delete(@Param('id', ParseIntPipe) id: number) {
-        return this.postService.delete(id);
+    delete(@Param('id', ParseIntPipe) id: number, @Req() req: any) {
+        return this.postService.delete(id, req.user.id);
     }
 }
+
+

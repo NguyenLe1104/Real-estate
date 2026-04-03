@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import {
     Table, Button, Space, Input, Popconfirm,
-    message, Typography, Modal, Form
+    message, Typography, Modal, Form, Checkbox
 } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
@@ -33,12 +33,16 @@ const CustomerManagementPage: React.FC = () => {
             if (search) params.search = search;
 
             const res = await customerApi.getAll(params);
+            
             const data = res.data;
+            const customerList = data.data || data;
+            const totalCount = data.totalItems || data.total || 0;
 
-            setCustomers(data.data || data);
-            setTotal(data.totalItems || 0);
+            setCustomers(Array.isArray(customerList) ? customerList : []);
+            setTotal(totalCount);
         } catch (err) {
-            message.error(getApiErrorMessage(err, 'Lỗi tải dữ liệu'));
+            message.error(getApiErrorMessage(err, 'Lỗi tải danh sách khách hàng'));
+            setCustomers([]);
         } finally {
             setLoading(false);
         }
@@ -71,6 +75,43 @@ const CustomerManagementPage: React.FC = () => {
         }
     };
 
+    const handleToggleVip = async (customerId: number, _userId: number, currentVipStatus: boolean) => {
+        try {
+            const newVipStatus = !currentVipStatus;
+            const res = await customerApi.update(customerId, { isVip: newVipStatus });
+
+            // Update state từ response data từ server
+            if (res.data?.data) {
+                setCustomers(prev =>
+                    prev.map(item =>
+                        item.id === customerId ? res.data.data : item
+                    )
+                );
+            } else {
+                // Fallback: update state local nếu server không trả data
+                setCustomers(prev =>
+                    prev.map(item =>
+                        item.id === customerId
+                            ? {
+                                ...item,
+                                user: item.user
+                                    ? {
+                                        ...item.user,
+                                        isVip: newVipStatus
+                                    }
+                                    : item.user
+                            }
+                            : item
+                    )
+                );
+            }
+
+            message.success(newVipStatus ? 'Nâng cấp thành công' : 'Hạ cấp thành công');
+        } catch (err) {
+            message.error(getApiErrorMessage(err, 'Cập nhật VIP thất bại'));
+        }
+    };
+
     const handleOpenModal = (item?: Customer) => {
         setEditingCustomer(item || null);
         form.resetFields();
@@ -81,6 +122,7 @@ const CustomerManagementPage: React.FC = () => {
                 phone: item.user?.phone,
                 email: item.user?.email,
                 address: item.user?.address,
+                isVip: item.user?.isVip || false,
             });
         }
 
@@ -93,35 +135,17 @@ const CustomerManagementPage: React.FC = () => {
 
             if (editingCustomer) {
                 await customerApi.update(editingCustomer.id, values);
-
-                setCustomers(prev =>
-                    prev.map(item =>
-                        item.id === editingCustomer.id
-                            ? {
-                                ...item,
-                                user: {
-                                    ...item.user,
-                                    ...values,
-                                },
-                            }
-                            : item
-                    )
-                );
-
                 message.success('Cập nhật thành công');
-
             } else {
-                const res = await customerApi.create(values);
-                const newCustomer = res.data.data;
-
-                setCustomers(prev => [newCustomer, ...prev]);
-
+                await customerApi.create(values);
                 message.success('Tạo mới thành công');
             }
 
-
             setModalOpen(false);
             form.resetFields();
+            
+            // Reload dữ liệu để đảm bảo dữ liệu mới nhất từ server
+            await loadCustomers();
 
         } catch (err: any) {
             if (err?.errorFields) return;
@@ -148,6 +172,23 @@ const CustomerManagementPage: React.FC = () => {
                     <Tag color={isActive ? 'green' : 'red'}>
                         {isActive ? 'Hoạt động' : 'Đã khóa'}
                     </Tag>
+                );
+            }
+        },
+        {
+            title: 'Tài khoản VIP',
+            render: (_, record) => {
+                const isVip = record.user?.isVip;
+
+                return (
+                    <Button
+                        size="small"
+                        type={isVip ? 'primary' : 'default'}
+                        danger={!isVip}
+                        onClick={() => handleToggleVip(record.id, record.userId, isVip || false)}
+                    >
+                        {isVip ? 'VIP' : 'Thường'}
+                    </Button>
                 );
             }
         },
@@ -256,6 +297,10 @@ const CustomerManagementPage: React.FC = () => {
 
                     <Form.Item name="address" label="Địa chỉ">
                         <Input />
+                    </Form.Item>
+
+                    <Form.Item name="isVip" label="Tài khoản VIP" valuePropName="checked">
+                        <Checkbox />
                     </Form.Item>
                 </Form>
             </Modal>

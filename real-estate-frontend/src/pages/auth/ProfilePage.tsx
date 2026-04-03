@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Form, Input, Button, Tabs, message, Spin } from 'antd';
-import { UserOutlined, PhoneOutlined, HomeOutlined, LockOutlined, MailOutlined } from '@ant-design/icons';
+import { Form, Input, Button, Tabs, message, Spin, Tag } from 'antd';
+import { UserOutlined, PhoneOutlined, HomeOutlined, LockOutlined, MailOutlined, CrownOutlined } from '@ant-design/icons';
 import { authApi } from '@/api';
 import { useAuthStore } from '@/stores/authStore';
 import PublicHeader from '@/components/layouts/PublicHeader';
@@ -17,31 +17,44 @@ const ProfilePage: React.FC = () => {
     const [formProfile] = Form.useForm();
     const [formPassword] = Form.useForm();
 
+    // Helper function để check VIP còn hạn hay không
+    const isVipActive = () => {
+        if (!user?.isVip || !user?.vipExpiry) return false;
+        return new Date(user.vipExpiry) > new Date();
+    };
+
+    // Helper function để format ngày VIP hết hạn
+    const formatVipExpiry = () => {
+        if (!user?.vipExpiry) return '---';
+        const expiryDate = new Date(user.vipExpiry);
+        return expiryDate.toLocaleDateString('vi-VN');
+    };
+
     // Lấy dữ liệu profile mới nhất từ server khi vào trang
     useEffect(() => {
         const fetchProfile = async () => {
-    try {
-        const res = await authApi.getProfile();
-        // Kiểm tra xem backend trả về res.data hay res.data.data
-        const profileData = res.data?.data || res.data; 
-        
-        if (profileData) {
-            formProfile.setFieldsValue({
-                username: profileData.username,
-                email: profileData.email,
-                fullName: profileData.fullName,
-                phone: profileData.phone,
-                address: profileData.address,
-            });
-            setUser(profileData);
-        }
-    } catch (error) {
-        console.error("Profile error:", error);
-        // message.error('Không thể tải thông tin tài khoản');
-    } finally {
-        setLoadingData(false);
-    }
-};
+            try {
+                const res = await authApi.getProfile();
+                // Kiểm tra xem backend trả về res.data hay res.data.data
+                const profileData = res.data?.data || res.data;
+                
+                if (profileData) {
+                    formProfile.setFieldsValue({
+                        username: profileData.username,
+                        email: profileData.email,
+                        fullName: profileData.fullName,
+                        phone: profileData.phone,
+                        address: profileData.address,
+                    });
+                    setUser(profileData);
+                }
+            } catch (error) {
+                console.error("Profile error:", error);
+                // message.error('Không thể tải thông tin tài khoản');
+            } finally {
+                setLoadingData(false);
+            }
+        };
 
         fetchProfile();
     }, [formProfile, setUser]);
@@ -212,16 +225,33 @@ const ProfilePage: React.FC = () => {
                             <h2 className="text-xl font-bold text-gray-800">{user?.fullName || user?.username}</h2>
                             <p className="text-gray-500">{user?.email}</p>
                             
+                            {/* VIP Badge */}
+                            {isVipActive() && (
+                                <div className="mt-3 mb-3">
+                                    <Tag icon={<CrownOutlined />} color="gold" className="text-sm font-semibold px-3 py-1">
+                                        VIP Account
+                                    </Tag>
+                                </div>
+                            )}
+                            
                             <div className="w-full border-t border-gray-100 my-4"></div>
                             
                             <div className="w-full flex justify-between text-sm text-gray-600 mb-2">
                                 <span>Trạng thái:</span>
                                 <span className="font-semibold text-green-600">Đang hoạt động</span>
                             </div>
-                            <div className="w-full flex justify-between text-sm text-gray-600">
+                            <div className="w-full flex justify-between text-sm text-gray-600 mb-2">
                                 <span>Vai trò:</span>
                                 <span className="font-semibold">
                                     {user?.roles?.includes('ADMIN') ? 'Quản trị viên' : 'Khách hàng'}
+                                </span>
+                            </div>
+
+                            {/* VIP Expiry Info */}
+                            <div className="w-full flex justify-between text-sm text-gray-600">
+                                <span>VIP hết hạn:</span>
+                                <span className={`font-semibold ${isVipActive() ? 'text-green-600' : 'text-red-600'}`}>
+                                    {isVipActive() ? formatVipExpiry() : 'Không có'}
                                 </span>
                             </div>
                         </div>

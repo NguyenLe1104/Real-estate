@@ -1,16 +1,17 @@
 import React, { useEffect, useState } from 'react';
 import { Table, Tag, Button, message, Spin, Empty, Popconfirm } from 'antd';
 import { EditOutlined, DeleteOutlined, PlusOutlined, EyeOutlined } from '@ant-design/icons';
-import { houseApi } from '@/api';
-import { Link } from 'react-router-dom';
+import { postApi } from '@/api';
+import { Link, useNavigate } from 'react-router-dom';
 
 const MyPostsPage: React.FC = () => {
+    const navigate = useNavigate();
     const [loading, setLoading] = useState(true);
     const [posts, setPosts] = useState([]);
 
     const fetchMyPosts = async () => {
         try {
-            const res = await houseApi.getMyHouses();
+            const res = await postApi.getAll();
             setPosts(res.data);
         } catch (error) {
             message.error('Không thể tải danh sách bài đăng');
@@ -25,7 +26,7 @@ const MyPostsPage: React.FC = () => {
 
     const handleDelete = async (id: number) => {
         try {
-            await houseApi.delete(id);
+            await postApi.delete(id);
             message.success('Xóa bài đăng thành công');
             setPosts(prev => prev.filter((item: any) => item.id !== id));
         } catch (error) {
@@ -69,7 +70,12 @@ const MyPostsPage: React.FC = () => {
             render: (_: any, record: any) => (
                 <div className="flex gap-2">
                     <Link to={`/houses/${record.id}`}><Button icon={<EyeOutlined />} size="small" /></Link>
-                    <Button icon={<EditOutlined />} size="small" className="text-blue-600" />
+                    <Button 
+                        icon={<EditOutlined />} 
+                        size="small" 
+                        className="text-blue-600"
+                        onClick={() => navigate(`/posts/${record.id}/edit`)}
+                    />
                     <Popconfirm title="Xóa bài đăng này?" onConfirm={() => handleDelete(record.id)}>
                         <Button icon={<DeleteOutlined />} danger size="small" />
                     </Popconfirm>
@@ -84,7 +90,14 @@ const MyPostsPage: React.FC = () => {
                 <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
                     <div className="flex justify-between items-center mb-8">
                         <h1 className="text-2xl font-bold text-gray-800">Bài viết của tôi</h1>
-                        <Button type="primary" icon={<PlusOutlined />} className="bg-[#254b86] h-10 px-6 font-semibold">Đăng bài mới</Button>
+                        <Button 
+                            type="primary" 
+                            icon={<PlusOutlined />} 
+                            className="bg-[#254b86] h-10 px-6 font-semibold"
+                            onClick={() => navigate('/posts/new')}
+                        >
+                            Đăng bài mới
+                        </Button>
                     </div>
 
                     {loading ? (

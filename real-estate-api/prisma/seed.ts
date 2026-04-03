@@ -69,6 +69,18 @@ async function main() {
     // Create VIP packages
     const vipPackages = [
         {
+            name: 'Đăng tin 1 lần (10k)',
+            description: 'Đăng tin 1 bài viết được ưu tiên hiển thị - 10.000đ/lần',
+            durationDays: 1,
+            price: 10000,
+            priorityLevel: 0,
+            features: JSON.stringify({
+                singlePost: true,
+                highlight: true,
+                badge: 'NỔIBẬT',
+            }),
+        },
+        {
             name: 'VIP 7 ngày',
             description: 'Gói VIP 7 ngày - Tin đăng được ưu tiên hiển thị',
             durationDays: 7,

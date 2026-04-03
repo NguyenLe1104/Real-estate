@@ -13,7 +13,10 @@ import NewsPage from '@/pages/public/NewsPage';
 import NewsDetailPage from '@/pages/public/NewsDetailPage';
 import FavoritesPage from '@/pages/public/FavoritesPage';
 import AboutMe from '@/pages/public/AboutMe';
-
+import PostFormPage from '@/pages/public/PostFormPage';
+import VIPUpgradePage from '@/pages/public/VIPUpgradePage';
+import PaymentSuccessPage from '@/pages/public/PaymentSuccessPage';
+import VNPayCallbackPage from '@/pages/public/VNPayCallbackPage';
 // Auth pages
 import LoginPage from '@/pages/auth/LoginPage';
 import RegisterPage from '@/pages/auth/RegisterPage';
@@ -79,14 +82,28 @@ const router = createBrowserRouter([
             { path: 'lands', element: <LandListPage /> },
             { path: 'lands/:id', element: <LandDetailPage /> },
             { path: 'posts', element: <NewsPage /> },
-            { path: '/posts/:id', element: <NewsDetailPage /> },
+            { path: 'posts/:id', element: <NewsDetailPage /> },
+            {
+                path: 'posts/new',
+                element: (
+                    <ProtectedRoute>
+                        <PostFormPage />
+                    </ProtectedRoute>
+                ),
+            },
+            {
+                path: 'posts/:id/edit',
+                element: (
+                    <ProtectedRoute>
+                        <PostFormPage />
+                    </ProtectedRoute>
+                ),
+            },
             { path: 'about', element: <AboutMe /> },
             {
                 path: 'favorites',
                 element: (
-
                     <FavoritesPage />
-
                 ),
             },
             {
@@ -94,6 +111,14 @@ const router = createBrowserRouter([
                 element: (
                     <ProtectedRoute>
                         <MyPostsPage />
+                    </ProtectedRoute>
+                ),
+            },
+            {
+                path: 'vip-upgrade',
+                element: (
+                    <ProtectedRoute>
+                        <VIPUpgradePage />
                     </ProtectedRoute>
                 ),
             },
@@ -107,7 +132,11 @@ const router = createBrowserRouter([
     },
     {
         path: '/payment/success',
-        element: <PaymentResultPage />,
+        element: <PaymentSuccessPage />,
+    },
+    {
+        path: '/payment/vnpay-callback',
+        element: <VNPayCallbackPage />,
     },
     {
         path: '/payment/failed',

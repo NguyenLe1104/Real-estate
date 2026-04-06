@@ -14,107 +14,115 @@ export class PaymentService {
         private momoService: MoMoService,
         private mailService: MailService,
         private mailProducer: MailProducerService,
-    ) { }
+    ) {}
 
 async createPayment(dto: CreatePaymentDto, userId: number, ipAddr: string) {
-        const vipPackage = await this.prisma.vipPackage.findUnique({
-            where: { id: dto.packageId },
-        });
+    const vipPackage = await this.prisma.vipPackage.findUnique({
+        where: { id: dto.packageId },
+    });
 
-        if (!vipPackage || vipPackage.status !== 1) {
-            throw new NotFoundException('VIP package not found or inactive');
-        }
-
-        let finalPostId: number | undefined = undefined;
-        
-        if (dto.paymentType === 'POST_VIP' || (dto as any).paymentType === 'POST') {
-            if (!dto.postId) throw new BadRequestException('Bắt buộc có postId cho gói VIP bài viết');
-            finalPostId = Number(dto.postId);
-            const post = await this.prisma.post.findFirst({
-                where: { id: finalPostId, userId },
-            });
-            if (!post) throw new NotFoundException('Post not found or you do not own this post');
-        }
-
-        return await this.prisma.$transaction(async (tx) => {
-            const subscription = await tx.vipSubscription.create({
-                data: {
-                    packageId: dto.packageId,
-                    userId: userId,
-                    status: 0,
-                    ...(finalPostId && { postId: finalPostId }),
-                } as any,
-            });
-
-            const payment = await tx.payment.create({
-                data: {
-                    subscriptionId: subscription.id,
-                    userId: userId,
-                    amount: vipPackage.price,
-                    paymentMethod: dto.paymentMethod,
-                    paymentType: dto.paymentType,
-                    status: 0,
-                },
-            });
-
-            let paymentUrl: string = '';
-            const orderId = `VIP${Date.now()}${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
-            const orderInfo = `Thanh toan goi VIP cho ${finalPostId ? 'bai dang ' + finalPostId : 'tai khoan'}`;
-            if (dto.paymentMethod === 'vnpay') {
-                console.log('NGROK:', process.env.NGROK_URL); // 👈 thêm ở đây
-                paymentUrl = this.vnpayService.createPaymentUrl(
-                    orderId,
-                    Number(vipPackage.price),
-                    orderInfo,
-                    ipAddr,
-                    `${process.env.NGROK_URL}/api/payment/vnpay/callback`
-                );
-            } else if (dto.paymentMethod === 'momo') {
-                const momoResponse = await this.momoService.createPaymentUrl(orderId, Number(vipPackage.price), orderInfo, dto.returnUrl);
-                paymentUrl = momoResponse.payUrl;
-            } else if (dto.paymentMethod === 'MOCK') {
-                paymentUrl = `${dto.returnUrl}?vnp_ResponseCode=00&vnp_TxnRef=${orderId}`;
-            } 
-            else {
-                throw new BadRequestException('Invalid payment method');
-            }
-
-            const updatedPayment = await tx.payment.update({
-                where: { id: payment.id },
-                data: { paymentUrl, transactionId: orderId },
-            });
-
-            await tx.paymentTransaction.create({
-                data: {
-                    paymentId: payment.id,
-                    transactionId: orderId,
-                    amount: vipPackage.price,
-                    currency: 'VND',
-                    paymentMethod: dto.paymentMethod,
-                    status: 'pending',
-                },
-            });
-
-            return {
-                message: 'Payment created successfully',
-                data: {
-                    paymentId: updatedPayment.id,
-                    subscriptionId: subscription.id,
-                    paymentUrl,
-                    amount: vipPackage.price,
-                },
-            };
-        });
+    if (!vipPackage || vipPackage.status !== 1) {
+        throw new NotFoundException('VIP package not found or inactive');
     }
 
+    let finalPostId: number | undefined = undefined;
+
+    // Sửa lỗi so sánh paymentType ở đây
+    if (dto.paymentType === PaymentType.POST_VIP) {
+        if (!dto.postId) {
+            throw new BadRequestException('Bắt buộc có postId cho gói VIP bài viết');
+        }
+        finalPostId = Number(dto.postId);
+
+        const post = await this.prisma.post.findFirst({
+            where: { id: finalPostId, userId },
+        });
+        if (!post) throw new NotFoundException('Post not found or you do not own this post');
+    }
+
+    return await this.prisma.$transaction(async (tx) => {
+        const subscription = await tx.vipSubscription.create({
+            data: {
+                packageId: dto.packageId,
+                userId: userId,
+                status: 0,
+                ...(finalPostId && { postId: finalPostId }),
+            },
+        });
+
+        const payment = await tx.payment.create({
+            data: {
+                subscriptionId: subscription.id,
+                userId: userId,
+                amount: vipPackage.price,
+                paymentMethod: dto.paymentMethod,
+                paymentType: dto.paymentType,
+                status: 0,
+            },
+        });
+
+        let paymentUrl: string = '';
+        const orderId = `VIP${Date.now()}${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+        const orderInfo = `Thanh toan goi VIP cho ${finalPostId ? 'bai dang ' + finalPostId : 'tai khoan'}`;
+
+        if (dto.paymentMethod === 'vnpay') {
+            console.log('NGROK:', process.env.NGROK_URL);
+            paymentUrl = this.vnpayService.createPaymentUrl(
+                orderId,
+                Number(vipPackage.price),
+                orderInfo,
+                ipAddr,
+                `${process.env.NGROK_URL}/api/payment/vnpay/callback`
+            );
+        } else if (dto.paymentMethod === 'momo') {
+            const momoResponse = await this.momoService.createPaymentUrl(
+                orderId,
+                Number(vipPackage.price),
+                orderInfo,
+                dto.returnUrl
+            );
+            paymentUrl = momoResponse.payUrl;
+        } else if (dto.paymentMethod === 'MOCK') {
+            paymentUrl = `${dto.returnUrl}?vnp_ResponseCode=00&vnp_TxnRef=${orderId}`;
+        } else {
+            throw new BadRequestException('Invalid payment method');
+        }
+
+        const updatedPayment = await tx.payment.update({
+            where: { id: payment.id },
+            data: { paymentUrl, transactionId: orderId },
+        });
+
+        await tx.paymentTransaction.create({
+            data: {
+                paymentId: payment.id,
+                transactionId: orderId,
+                amount: vipPackage.price,
+                currency: 'VND',
+                paymentMethod: dto.paymentMethod,
+                status: 'pending',
+            },
+        });
+
+        return {
+            message: 'Payment created successfully',
+            data: {
+                paymentId: updatedPayment.id,
+                subscriptionId: subscription.id,
+                paymentUrl,
+                amount: vipPackage.price,
+            },
+        };
+    });
+}
     private async activateSubscription(paymentId: number, subscription: any) {
         const now = new Date();
         const duration = subscription.package?.durationDays || 0;
-        
+
         await this.prisma.$transaction(async (tx) => {
             let startDate = new Date();
 
-            // Phân biệt VIP bài viết hay VIP tài khoản để lấy ngày hết hạn cũ
+            // Phân biệt VIP bài viết hay VIP tài khoản
             if (subscription.postId) {
                 const post = await tx.post.findUnique({ where: { id: subscription.postId } });
                 if (post?.isVip && post.vipExpiry && post.vipExpiry > now) {
@@ -127,30 +135,34 @@ async createPayment(dto: CreatePaymentDto, userId: number, ipAddr: string) {
                 }
             }
 
-            // Tính ngày kết thúc mới
             const endDate = new Date(startDate.getTime() + duration * 24 * 60 * 60 * 1000);
 
             // Cập nhật Payment & Subscription
             await tx.payment.update({
                 where: { id: paymentId },
-                data: { status: 1, paidAt: now }
+                data: { status: 1, paidAt: now },
             });
 
             await tx.vipSubscription.update({
                 where: { id: subscription.id },
-                data: { status: 1, startDate: now, endDate: endDate }
+                data: { status: 1, startDate: now, endDate: endDate },
             });
 
             // Cập nhật quyền lợi VIP
             if (subscription.postId) {
                 await tx.post.update({
                     where: { id: subscription.postId },
-                    data: { isVip: true, vipExpiry: endDate, status: 1, postedAt: now } // Thêm status: 1 để tự động chuyển sang chờ duyệt
+                    data: { 
+                        isVip: true, 
+                        vipExpiry: endDate, 
+                        status: 1, 
+                        postedAt: now 
+                    },
                 });
             } else {
                 await tx.user.update({
                     where: { id: subscription.userId },
-                    data: { isVip: true, vipExpiry: endDate } as any
+                    data: { isVip: true, vipExpiry: endDate },
                 });
             }
         });
@@ -170,7 +182,6 @@ async createPayment(dto: CreatePaymentDto, userId: number, ipAddr: string) {
         });
 
         if (!payment) throw new NotFoundException('Payment not found');
-
         if (payment.status === 1) return { success: true, message: 'Payment already successful' };
 
         await this.prisma.paymentTransaction.updateMany({
@@ -218,13 +229,11 @@ async createPayment(dto: CreatePaymentDto, userId: number, ipAddr: string) {
             await this.prisma.payment.update({ where: { id: payment.id }, data: { status: 2 } });
             await this.prisma.vipSubscription.update({ where: { id: payment.subscriptionId }, data: { status: 3 } });
         }
-        
-        // Luôn trả về 00 nếu đã nhận và xử lý xong để VNPay không gọi lại nữa
-        return { RspCode: '00', Message: 'Confirm Success' }; 
+
+        return { RspCode: '00', Message: 'Confirm Success' };
     }
 
     async handleMoMoCallback(momoData: any) {
-        // ... (Giữ nguyên như cũ)
         const isValid = this.momoService.verifySignature(momoData);
         const transactionId = momoData.orderId;
         const resultCode = momoData.resultCode;
@@ -238,7 +247,7 @@ async createPayment(dto: CreatePaymentDto, userId: number, ipAddr: string) {
         });
 
         if (!payment) throw new NotFoundException('Payment not found');
-        if (payment.status === 1) return { success: true, message: 'Payment already successful' }; // Chặn double check
+        if (payment.status === 1) return { success: true, message: 'Payment already successful' };
 
         await this.prisma.paymentTransaction.updateMany({
             where: { transactionId },
@@ -262,10 +271,9 @@ async createPayment(dto: CreatePaymentDto, userId: number, ipAddr: string) {
     }
 
     async simulatePaymentSuccess(paymentId: number, userId: number) {
-        // ... (Giữ nguyên như cũ)
         const payment = await this.prisma.payment.findFirst({
             where: { id: paymentId, userId },
-            include: { subscription: { include: { package: true } } }
+            include: { subscription: { include: { package: true } } },
         });
 
         if (!payment) throw new NotFoundException('Payment not found');
@@ -276,16 +284,16 @@ async createPayment(dto: CreatePaymentDto, userId: number, ipAddr: string) {
         return {
             success: true,
             message: 'Payment simulated successfully',
-            data: { 
+            data: {
                 postId: payment.subscription.postId,
-                packageName: payment.subscription.package.name 
+                packageName: payment.subscription.package.name,
             },
         };
     }
 
     private sendPaymentNotification(payment: any, isSuccess: boolean) {
-        // ... (Giữ nguyên như cũ)
         if (!payment?.user?.email) return;
+
         const packageName = payment.subscription?.package?.name || 'Gói VIP';
         const postTitle = payment.subscription?.post?.title;
         const amount = Number(payment.amount || 0);
@@ -303,7 +311,6 @@ async createPayment(dto: CreatePaymentDto, userId: number, ipAddr: string) {
     }
 
     async getPaymentById(id: number, userId: number) {
-        // ... (Giữ nguyên như cũ)
         const payment = await this.prisma.payment.findFirst({
             where: { id, userId },
             include: { subscription: { include: { package: true, post: true } } },
@@ -313,12 +320,18 @@ async createPayment(dto: CreatePaymentDto, userId: number, ipAddr: string) {
     }
 
     async getMyPayments(userId: number, page = 1, limit = 10) {
-        // ... (Giữ nguyên như cũ)
         const skip = (page - 1) * limit;
         const [payments, total] = await Promise.all([
             this.prisma.payment.findMany({
                 where: { userId },
-                include: { subscription: { include: { package: true, post: { select: { id: true, title: true, city: true, district: true } } } } },
+                include: { 
+                    subscription: { 
+                        include: { 
+                            package: true, 
+                            post: { select: { id: true, title: true, city: true, district: true } } 
+                        } 
+                    } 
+                },
                 orderBy: { createdAt: 'desc' },
                 skip,
                 take: limit,

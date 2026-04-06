@@ -1,16 +1,11 @@
-import { useEffect, useState } from 'react';
-import {
-    Table, Button, Space, Input, Popconfirm,
-    message, Typography, Modal, Form, Checkbox
-} from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined } from '@ant-design/icons';
-import type { ColumnsType } from 'antd/es/table';
+import { useCallback, useEffect, useState } from 'react';
+import { toast } from 'react-hot-toast';
 import { customerApi } from '@/api';
 import { formatDateTime, getApiErrorMessage } from '@/utils';
 import type { Customer } from '@/types';
 import { DEFAULT_PAGE_SIZE } from '@/constants';
-import { Tag } from 'antd';
-const { Title } = Typography;
+import { Button, Badge, Modal, DataTable } from '@/components/ui';
+import type { Column } from '@/components/ui';
 
 const CustomerManagementPage: React.FC = () => {
     const [customers, setCustomers] = useState<Customer[]>([]);
@@ -20,20 +15,26 @@ const CustomerManagementPage: React.FC = () => {
     const [search, setSearch] = useState('');
     const [modalOpen, setModalOpen] = useState(false);
     const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
-    const [form] = Form.useForm();
+    const [deleteTarget, setDeleteTarget] = useState<Customer | null>(null);
+    const [deleting, setDeleting] = useState(false);
+    const [submitting, setSubmitting] = useState(false);
 
-    useEffect(() => {
-        loadCustomers(); // ✅ chỉ gọi cái này
-    }, [page, search]);
+    const [formData, setFormData] = useState({
+        username: '',
+        password: '',
+        fullName: '',
+        phone: '',
+        email: '',
+        address: '',
+    });
 
-    const loadCustomers = async () => {
+    const loadCustomers = useCallback(async () => {
         setLoading(true);
         try {
-            const params: any = { page, limit: DEFAULT_PAGE_SIZE };
-            if (search) params.search = search;
+            const params: Record<string, unknown> = { page, limit: DEFAULT_PAGE_SIZE };
+            if (search.trim()) params.search = search.trim();
 
             const res = await customerApi.getAll(params);
-            
             const data = res.data;
             const customerList = data.data || data;
             const totalCount = data.totalItems || data.total || 0;
@@ -41,209 +42,225 @@ const CustomerManagementPage: React.FC = () => {
             setCustomers(Array.isArray(customerList) ? customerList : []);
             setTotal(totalCount);
         } catch (err) {
-            message.error(getApiErrorMessage(err, 'Lỗi tải danh sách khách hàng'));
+            toast.error(getApiErrorMessage(err, 'Lỗi tải danh sách khách hàng'));
             setCustomers([]);
         } finally {
             setLoading(false);
         }
-    };
+    }, [page, search]);
 
-    const handleDelete = async (id: number) => {
+    useEffect(() => {
+        loadCustomers();
+    }, [loadCustomers]);
+
+    const handleLockAccount = async () => {
+        if (!deleteTarget) return;
+        setDeleting(true);
         try {
-            await customerApi.delete(id);
+            await customerApi.delete(deleteTarget.id);
 
-            message.success('Đã khóa tài khoản');
+            toast.success('Đã khóa tài khoản thành công');
 
-            setCustomers(prev =>
-                prev.map(item =>
-                    item.id === id
+            setCustomers((prev) =>
+                prev.map((item) =>
+                    item.id === deleteTarget.id
                         ? {
-                            ...item,
-                            user: item.user
-                                ? {
-                                    ...item.user,
-                                    status: 0
-                                }
-                                : item.user
-                        }
-                        : item
-                )
+                              ...item,
+                              user: item.user ? { ...item.user, status: 0 } : item.user,
+                          }
+                        : item,
+                ),
             );
-
+            setDeleteTarget(null);
         } catch (err) {
-            message.error(getApiErrorMessage(err, 'Xóa thất bại'));
+            toast.error(getApiErrorMessage(err, 'Khóa tài khoản thất bại'));
+        } finally {
+            setDeleting(false);
         }
     };
 
-    const handleToggleVip = async (customerId: number, _userId: number, currentVipStatus: boolean) => {
+    const handleToggleVip = async (customerId: number, currentVipStatus: boolean) => {
         try {
             const newVipStatus = !currentVipStatus;
             const res = await customerApi.update(customerId, { isVip: newVipStatus });
 
-            // Update state từ response data từ server
-            if (res.data?.data) {
-                setCustomers(prev =>
-                    prev.map(item =>
-                        item.id === customerId ? res.data.data : item
-                    )
-                );
-            } else {
-                // Fallback: update state local nếu server không trả data
-                setCustomers(prev =>
-                    prev.map(item =>
-                        item.id === customerId
-                            ? {
-                                ...item,
-                                user: item.user
-                                    ? {
-                                        ...item.user,
-                                        isVip: newVipStatus
-                                    }
-                                    : item.user
-                            }
-                            : item
-                    )
-                );
-            }
+            const updatedCustomer = res.data?.data;
 
-            message.success(newVipStatus ? 'Nâng cấp thành công' : 'Hạ cấp thành công');
+            setCustomers((prev) =>
+                prev.map((item) =>
+                    item.id === customerId
+                        ? updatedCustomer || {
+                              ...item,
+                              user: item.user ? { ...item.user, isVip: newVipStatus } : item.user,
+                          }
+                        : item,
+                ),
+            );
+
+            toast.success(newVipStatus ? 'Nâng cấp VIP thành công' : 'Hạ cấp VIP thành công');
         } catch (err) {
-            message.error(getApiErrorMessage(err, 'Cập nhật VIP thất bại'));
+            toast.error(getApiErrorMessage(err, 'Cập nhật VIP thất bại'));
         }
     };
 
     const handleOpenModal = (item?: Customer) => {
         setEditingCustomer(item || null);
-        form.resetFields();
 
         if (item) {
-            form.setFieldsValue({
-                fullName: item.user?.fullName,
-                phone: item.user?.phone,
-                email: item.user?.email,
-                address: item.user?.address,
-                isVip: item.user?.isVip || false,
+            setFormData({
+                username: item.user?.username || '',
+                password: '',
+                fullName: item.user?.fullName || '',
+                phone: item.user?.phone || '',
+                email: item.user?.email || '',
+                address: item.user?.address || '',
             });
+        } else {
+            setFormData({ username: '', password: '', fullName: '', phone: '', email: '', address: '' });
         }
-
         setModalOpen(true);
     };
 
-    const handleSubmit = async () => {
-        try {
-            const values = await form.validateFields();
+    const resetForm = () => {
+        setFormData({ username: '', password: '', fullName: '', phone: '', email: '', address: '' });
+        setEditingCustomer(null);
+    };
 
-            if (editingCustomer) {
-                await customerApi.update(editingCustomer.id, values);
-                message.success('Cập nhật thành công');
+    const handleCloseModal = () => {
+        setModalOpen(false);
+        resetForm();
+    };
+
+    const handleSubmit = async () => {
+        if (!formData.fullName || !formData.phone || !formData.email) {
+            toast.error('Vui lòng nhập đầy đủ Họ tên, SĐT và Email');
+            return;
+        }
+        if (!editingCustomer && (!formData.username || !formData.password)) {
+            toast.error('Vui lòng nhập Username và Password khi tạo mới');
+            return;
+        }
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+            toast.error('Email không đúng định dạng');
+            return;
+        }
+
+        setSubmitting(true);
+        try {
+            const values = {
+                fullName: formData.fullName,
+                phone: formData.phone,
+                email: formData.email,
+                address: formData.address || undefined,
+            };
+
+            if (!editingCustomer) {
+                const createPayload = { ...values, username: formData.username, password: formData.password };
+                const res = await customerApi.create(createPayload);
+                const newCustomer = res.data.data || res.data;
+
+                setCustomers((prev) => [newCustomer, ...prev]);
+                toast.success('Tạo khách hàng mới thành công');
             } else {
-                await customerApi.create(values);
-                message.success('Tạo mới thành công');
+                await customerApi.update(editingCustomer.id, values);
+
+                setCustomers((prev) =>
+                    prev.map((item) =>
+                        item.id === editingCustomer.id
+                            ? ({
+                                  ...item,
+                                  user: item.user ? { ...item.user, ...values } : item.user,
+                              } as Customer)
+                            : item,
+                    ),
+                );
+                toast.success('Cập nhật thông tin thành công');
             }
 
-            setModalOpen(false);
-            form.resetFields();
-            
-            // Reload dữ liệu để đảm bảo dữ liệu mới nhất từ server
-            await loadCustomers();
-
-        } catch (err: any) {
-            if (err?.errorFields) return;
-            message.error(getApiErrorMessage(err, editingCustomer ? 'Cập nhật thất bại' : 'Tạo mới thất bại'));
+            handleCloseModal();
+        } catch (err) {
+            toast.error(getApiErrorMessage(err, editingCustomer ? 'Cập nhật thất bại' : 'Tạo mới thất bại'));
+        } finally {
+            setSubmitting(false);
         }
     };
 
-    const columns: ColumnsType<Customer> = [
-        { title: 'Mã KH', dataIndex: 'code', key: 'code' },
-        { title: 'Họ tên', render: (_, r) => r.user?.fullName || '—' },
-        { title: 'Email', render: (_, r) => r.user?.email || '—' },
-        { title: 'SĐT', render: (_, r) => r.user?.phone || '—' },
+    const columns: Column<Customer>[] = [
+        { title: 'Mã KH', dataIndex: 'code', key: 'code', width: 100 },
+        {
+            title: 'Họ tên',
+            key: 'fullName',
+            render: (_, record) => record.user?.fullName || '—',
+        },
+        {
+            title: 'SĐT',
+            key: 'phone',
+            render: (_, record) => record.user?.phone || '—',
+        },
+        {
+            title: 'Email',
+            key: 'email',
+            ellipsis: true,
+            render: (_, record) => record.user?.email || '—',
+        },
+        {
+            title: 'VIP',
+            key: 'vip',
+            width: 80,
+            render: (_, record) => (
+                <Badge color={record.user?.isVip ? 'warning' : 'light'}>
+                    {record.user?.isVip ? 'VIP' : '—'}
+                </Badge>
+            ),
+        },
         {
             title: 'Ngày tạo',
-            dataIndex: 'createdAt',
-            render: (d: string) => formatDateTime(d),
-        },
-        {
-            title: 'Trạng thái',
-            render: (_, record) => {
-                const isActive = record.user?.status === 1;
-
-                return (
-                    <Tag color={isActive ? 'green' : 'red'}>
-                        {isActive ? 'Hoạt động' : 'Đã khóa'}
-                    </Tag>
-                );
-            }
-        },
-        {
-            title: 'Tài khoản VIP',
-            render: (_, record) => {
-                const isVip = record.user?.isVip;
-
-                return (
-                    <Button
-                        size="small"
-                        type={isVip ? 'primary' : 'default'}
-                        danger={!isVip}
-                        onClick={() => handleToggleVip(record.id, record.userId, isVip || false)}
-                    >
-                        {isVip ? 'VIP' : 'Thường'}
-                    </Button>
-                );
-            }
+            key: 'createdAt',
+            render: (_, record) => formatDateTime(record.createdAt),
         },
         {
             title: 'Hành động',
-            width: 150,
+            key: 'action',
+            width: 220,
             render: (_, record) => (
-                <Space>
-                    <Button
-                        size="small"
-                        type="primary"
-                        icon={<EditOutlined />}
-                        onClick={() => handleOpenModal(record)}
-                    />
-                    <Popconfirm
-                        title="Bạn có chắc muốn xóa?"
-                        onConfirm={() => handleDelete(record.id)}
-                    >
-                        <Button
-                            size="small"
-                            danger
-                            icon={<DeleteOutlined />}
-                            disabled={record.user?.status === 0}
-                        />
-                    </Popconfirm>
-                </Space>
+                <div className="flex flex-wrap items-center gap-2">
+                    <Button size="sm" variant="outline" onClick={() => handleOpenModal(record)}>
+                        Sửa
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => handleToggleVip(record.id, !!record.user?.isVip)}>
+                        {record.user?.isVip ? 'Hạ VIP' : 'Nâng VIP'}
+                    </Button>
+                    <Button size="sm" variant="danger" onClick={() => setDeleteTarget(record)}>
+                        Khóa
+                    </Button>
+                </div>
             ),
         },
     ];
 
     return (
         <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
-                <Title level={3} style={{ margin: 0 }}>
-                    Quản lý khách hàng
-                </Title>
-
-                <Button type="primary" icon={<PlusOutlined />} onClick={() => handleOpenModal()}>
-                    Thêm mới
+            <div className="flex items-center justify-between mb-4">
+                <h3 className="text-xl font-semibold text-gray-900">Quản lý khách hàng</h3>
+                <Button variant="primary" onClick={() => handleOpenModal()}>
+                    Thêm khách hàng
                 </Button>
             </div>
 
-            <Input
-                placeholder="Tìm kiếm..."
-                prefix={<SearchOutlined />}
-                style={{ marginBottom: 16, maxWidth: 400 }}
-                value={search}
-                onChange={(e) => {
-                    setSearch(e.target.value);
-                    setPage(1);
-                }}
-                allowClear
-            />
+            <div className="relative mb-4 w-full min-w-0 sm:max-w-[400px]">
+                <input
+                    type="text"
+                    placeholder="Tìm kiếm..."
+                    className="admin-control admin-filter-input w-full rounded-xl border border-gray-300 bg-white py-2.5 px-3.5 text-sm text-gray-700 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+                    value={search}
+                    onChange={(e) => {
+                        setSearch(e.target.value);
+                        setPage(1);
+                    }}
+                />
+            </div>
 
-            <Table
+            <DataTable
                 columns={columns}
                 dataSource={customers}
                 rowKey="id"
@@ -258,51 +275,121 @@ const CustomerManagementPage: React.FC = () => {
             />
 
             <Modal
-                title={editingCustomer ? 'Chỉnh sửa khách hàng' : 'Thêm khách hàng'}
-                open={modalOpen}
-                onOk={handleSubmit}
-                onCancel={() => setModalOpen(false)}
+                isOpen={!!deleteTarget}
+                onClose={() => {
+                    if (!deleting) setDeleteTarget(null);
+                }}
+                title="Xác nhận khóa tài khoản"
+                width="max-w-md"
+                footer={
+                    <>
+                        <Button variant="outline" onClick={() => setDeleteTarget(null)} disabled={deleting}>
+                            Hủy
+                        </Button>
+                        <Button variant="danger" onClick={handleLockAccount} loading={deleting}>
+                            Khóa tài khoản
+                        </Button>
+                    </>
+                }
             >
-                <Form form={form} layout="vertical">
+                <p className="text-sm text-gray-700">
+                    Bạn có chắc muốn khóa tài khoản khách hàng{' '}
+                    <span className="font-semibold text-gray-900">
+                        {deleteTarget?.user?.fullName || deleteTarget?.code}
+                    </span>
+                    ?
+                </p>
+            </Modal>
+
+            <Modal
+                isOpen={modalOpen}
+                onClose={handleCloseModal}
+                title={editingCustomer ? 'Chỉnh sửa khách hàng' : 'Thêm khách hàng mới'}
+                footer={
+                    <>
+                        <Button variant="outline" onClick={handleCloseModal} disabled={submitting}>
+                            Hủy
+                        </Button>
+                        <Button variant="primary" onClick={handleSubmit} loading={submitting}>
+                            {editingCustomer ? 'Cập nhật' : 'Tạo mới'}
+                        </Button>
+                    </>
+                }
+            >
+                <div className="space-y-5">
                     {!editingCustomer && (
                         <>
-                            <Form.Item name="username" label="Username" rules={[{ required: true, message: 'Vui lòng nhập tên đăng nhập' }]}>
-                                <Input />
-                            </Form.Item>
-
-                            <Form.Item name="password" label="Password" rules={[{ required: true, message: 'Vui lòng nhập mật khẩu' }]}>
-                                <Input.Password />
-                            </Form.Item>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    Username <span className="text-red-500">*</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+                                    value={formData.username}
+                                    onChange={(e) => setFormData((prev) => ({ ...prev, username: e.target.value }))}
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    Mật khẩu <span className="text-red-500">*</span>
+                                </label>
+                                <input
+                                    type="password"
+                                    className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+                                    value={formData.password}
+                                    onChange={(e) => setFormData((prev) => ({ ...prev, password: e.target.value }))}
+                                />
+                            </div>
                         </>
                     )}
 
-                    <Form.Item name="fullName" label="Họ tên" rules={[{ required: true, message: 'Vui lòng nhập họ tên' }]}>
-                        <Input />
-                    </Form.Item>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Họ tên <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                            type="text"
+                            className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+                            value={formData.fullName}
+                            onChange={(e) => setFormData((prev) => ({ ...prev, fullName: e.target.value }))}
+                        />
+                    </div>
 
-                    <Form.Item name="phone" label="SĐT" rules={[{ required: true, message: 'Vui lòng nhập số điện thoại' }]}>
-                        <Input />
-                    </Form.Item>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Số điện thoại <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                            type="text"
+                            className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+                            value={formData.phone}
+                            onChange={(e) => setFormData((prev) => ({ ...prev, phone: e.target.value }))}
+                        />
+                    </div>
 
-                    <Form.Item
-                        name="email"
-                        label="Email"
-                        rules={[
-                            { required: true, message: 'Vui lòng nhập email' },
-                            { type: 'email', message: 'Email không đúng định dạng' },
-                        ]}
-                    >
-                        <Input />
-                    </Form.Item>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Email <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                            type="email"
+                            className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+                            value={formData.email}
+                            onChange={(e) => setFormData((prev) => ({ ...prev, email: e.target.value }))}
+                        />
+                    </div>
 
-                    <Form.Item name="address" label="Địa chỉ">
-                        <Input />
-                    </Form.Item>
-
-                    <Form.Item name="isVip" label="Tài khoản VIP" valuePropName="checked">
-                        <Checkbox />
-                    </Form.Item>
-                </Form>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Địa chỉ</label>
+                        <input
+                            type="text"
+                            className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+                            value={formData.address}
+                            onChange={(e) => setFormData((prev) => ({ ...prev, address: e.target.value }))}
+                        />
+                    </div>
+                </div>
             </Modal>
         </div>
     );

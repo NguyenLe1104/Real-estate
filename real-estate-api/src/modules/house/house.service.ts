@@ -6,14 +6,14 @@ import { CreateHouseDto, UpdateHouseDto } from './dto/house.dto';
 import { validateFieldsNoSpecialChars } from '../../common/utils/validators';
 import { AiService } from '../ai/ai.service';
 
-// Cache TTL (seconds)
-const HOUSE_LIST_TTL = 600;   // 10 minutes
-const HOUSE_DETAIL_TTL = 900;  // 15 minutes
-const HOUSE_SEARCH_TTL = 300;   // 5 minutes
 
-const houseListKey = (page: number, limit: number) => `houses:list:${page}:${limit}`;
+const HOUSE_LIST_TTL = 600;
+const HOUSE_DETAIL_TTL = 900;
+const HOUSE_SEARCH_TTL = 300;
+
+const houseListKey = (page: number, limit: number, status?: number) => `houses:list:${page}:${limit}:${status ?? 'all'}`;
 const houseDetailKey = (id: number) => `house:${id}`;
-const houseSearchKey = (query: string, page: number, limit: number) => `houses:search:${query}:${page}:${limit}`;
+const houseSearchKey = (query: string, page: number, limit: number, status?: number) => `houses:search:${query}:${page}:${limit}:${status ?? 'all'}`;
 
 @Injectable()
 export class HouseService {
@@ -26,8 +26,8 @@ export class HouseService {
         private aiService: AiService,
     ) { }
 
-    async findAll(page = 1, limit = 10) {
-        const cacheKey = houseListKey(page, limit);
+    async findAll(page = 1, limit = 10, status?: number) {
+        const cacheKey = houseListKey(page, limit, status);
 
         // Try cache first
         const cached = await this.redis.get(cacheKey).catch(() => null);
@@ -38,8 +38,11 @@ export class HouseService {
 
         this.logger.debug(`Cache MISS: ${cacheKey}`);
         const skip = (page - 1) * limit;
+        const where = status !== undefined ? { status } : undefined;
+
         const [houses, total] = await Promise.all([
             this.prisma.house.findMany({
+                where,
                 skip,
                 take: limit,
                 include: {
@@ -51,7 +54,7 @@ export class HouseService {
                 },
                 orderBy: { createdAt: 'desc' },
             }),
-            this.prisma.house.count(),
+            this.prisma.house.count({ where }),
         ]);
 
         const result = {
@@ -61,7 +64,6 @@ export class HouseService {
             totalItems: total,
         };
 
-        // Set cache
         await this.redis.set(cacheKey, result, HOUSE_LIST_TTL).catch(() => {
             this.logger.warn(`Failed to cache ${cacheKey}`);
         });
@@ -72,7 +74,7 @@ export class HouseService {
     async findById(id: number) {
         const cacheKey = houseDetailKey(id);
 
-        // Try cache first
+
         const cached = await this.redis.get(cacheKey).catch(() => null);
         if (cached) {
             this.logger.debug(`Cache HIT: ${cacheKey}`);
@@ -92,7 +94,7 @@ export class HouseService {
         });
         if (!house) throw new NotFoundException('House not found');
 
-        // Set cache
+
         await this.redis.set(cacheKey, house, HOUSE_DETAIL_TTL).catch(() => {
             this.logger.warn(`Failed to cache ${cacheKey}`);
         });
@@ -142,7 +144,6 @@ export class HouseService {
             });
         }
 
-        // Invalidate cache
         await this.invalidateHouseCache();
 
         const result = {
@@ -194,13 +195,11 @@ export class HouseService {
         });
 
         if (files?.length || dto.keepImageIds !== undefined) {
-            // Parse danh sách ID ảnh cần giữ
             const keepIds: number[] = dto.keepImageIds
                 ? (Array.isArray(dto.keepImageIds) ? dto.keepImageIds : [dto.keepImageIds])
                     .map(Number).filter((n) => !isNaN(n))
                 : [];
 
-            // Xóa ảnh không nằm trong keepIds
             await this.prisma.houseImage.deleteMany({
                 where: {
                     houseId: id,
@@ -244,7 +243,7 @@ export class HouseService {
         });
         if (!house) throw new NotFoundException('House not found');
 
-        // Delete cloudinary images
+
         for (const img of house.images) {
             const publicId = img.url.split('/').pop()?.split('.')[0];
             if (publicId) await this.cloudinaryService.deleteImage(publicId);
@@ -253,17 +252,16 @@ export class HouseService {
         await this.prisma.houseImage.deleteMany({ where: { houseId: id } });
         await this.prisma.house.delete({ where: { id } });
 
-        // Invalidate cache
         await this.invalidateHouseCache();
         await this.redis.del(houseDetailKey(id)).catch(() => { });
 
         return { message: 'House deleted successfully' };
     }
 
-    async search(query: string, page = 1, limit = 10) {
-        const cacheKey = houseSearchKey(query, page, limit);
+    async search(query: string, page = 1, limit = 10, status?: number) {
+        const cacheKey = houseSearchKey(query, page, limit, status);
 
-        // Try cache first
+
         const cached = await this.redis.get(cacheKey).catch(() => null);
         if (cached) {
             this.logger.debug(`Cache HIT: ${cacheKey}`);
@@ -280,6 +278,7 @@ export class HouseService {
                 { ward: { contains: query } },
                 { description: { contains: query } },
             ],
+            ...(status !== undefined ? { status } : {}),
         };
 
         const [houses, total] = await Promise.all([

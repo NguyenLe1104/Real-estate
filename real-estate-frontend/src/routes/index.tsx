@@ -17,12 +17,16 @@ import PostFormPage from '@/pages/public/PostFormPage';
 import VIPUpgradePage from '@/pages/public/VIPUpgradePage';
 import PaymentSuccessPage from '@/pages/public/PaymentSuccessPage';
 import VNPayCallbackPage from '@/pages/public/VNPayCallbackPage';
+import AppointmentBookingPage from '@/pages/public/AppointmentBookingPage';
+import PaymentResultPage from '@/pages/public/PaymentResultPage';
+
 // Auth pages
 import LoginPage from '@/pages/auth/LoginPage';
 import RegisterPage from '@/pages/auth/RegisterPage';
 import ForgotPasswordPage from '@/pages/auth/ForgotPasswordPage';
 import ConfirmOTP from '@/pages/auth/ConfirmOTP';
 import PublicProfilePage from '@/pages/auth/ProfilePage';
+
 // Admin pages
 import DashboardPage from '@/pages/admin/DashboardPage';
 import HouseManagementPage from '@/pages/admin/HouseManagementPage';
@@ -32,6 +36,7 @@ import LandFormPage from '@/pages/admin/LandFormPage';
 import PostManagementPage from '@/pages/admin/PostManagementPage';
 import AppointmentManagementPage from '@/pages/admin/AppointmentManagementPage';
 import AppointmentFormPage from '@/pages/admin/AppointmentFormPage';
+import AppointmentCalendarPage from '@/pages/admin/AppointmentCalendarPage';
 import UserManagementPage from '@/pages/admin/UserManagementPage';
 import CustomerManagementPage from '@/pages/admin/CustomerManagementPage';
 import EmployeeManagementPage from '@/pages/admin/EmployeeManagementPage';
@@ -40,38 +45,21 @@ import CategoryManagementPage from '@/pages/admin/CategoryManagementPage';
 import FavoriteManagementPage from '@/pages/admin/FavoriteManagementPage';
 import ProfilePage from '@/pages/admin/ProfilePage';
 import PaymentHistoryPage from '@/pages/admin/PaymentHistoryPage';
-import PaymentResultPage from '@/pages/public/PaymentResultPage';
-import EmployeeAppointmentPage from '@/pages/employee/EmployeeAppointmentPage';
+import VipPackageManagementPage from '@/pages/admin/VipPackageManagementPage';
+import VipPackageFormPage from '@/pages/admin/VipPackageFormPage';
 
+// Employee pages
+import EmployeeAppointmentPage from '@/pages/employee/EmployeeAppointmentPage';
+import EmployeeCalendarPage from '@/pages/employee/EmployeeCalendarPage';
 
 const router = createBrowserRouter([
-    // Auth routes
-    {
-        path: '/login',
-        element: <LoginPage />,
-    },
-    {
-        path: '/register',
-        element: <RegisterPage />,
-    },
-    {
-        path: '/otp',
-        element: <ConfirmOTP />,
-    },
-    {
-        path: '/forgot-password',
-        element: <ForgotPasswordPage />,
-    },
-    {
-        path: 'profile',
-        element: (
-            <ProtectedRoute>
-                <PublicProfilePage />
-            </ProtectedRoute>
-        )
-    },
+    // ====================== AUTH ROUTES ======================
+    { path: '/login', element: <LoginPage /> },
+    { path: '/register', element: <RegisterPage /> },
+    { path: '/otp', element: <ConfirmOTP /> },
+    { path: '/forgot-password', element: <ForgotPasswordPage /> },
 
-    // Public routes
+    // ====================== PUBLIC ROUTES ======================
     {
         path: '/',
         element: <PublicLayout />,
@@ -81,6 +69,8 @@ const router = createBrowserRouter([
             { path: 'houses/:id', element: <HouseDetailPage /> },
             { path: 'lands', element: <LandListPage /> },
             { path: 'lands/:id', element: <LandDetailPage /> },
+
+            // News & Posts
             { path: 'posts', element: <NewsPage /> },
             { path: 'posts/:id', element: <NewsDetailPage /> },
             {
@@ -99,11 +89,24 @@ const router = createBrowserRouter([
                     </ProtectedRoute>
                 ),
             },
+
             { path: 'about', element: <AboutMe /> },
+
+            // Protected public routes
+            {
+                path: 'appointment',
+                element: (
+                    <ProtectedRoute requiredRoles={['CUSTOMER']}>
+                        <AppointmentBookingPage />
+                    </ProtectedRoute>
+                ),
+            },
             {
                 path: 'favorites',
                 element: (
-                    <FavoritesPage />
+                    <ProtectedRoute>
+                        <FavoritesPage />
+                    </ProtectedRoute>
                 ),
             },
             {
@@ -122,28 +125,36 @@ const router = createBrowserRouter([
                     </ProtectedRoute>
                 ),
             },
+
+            // Giữ lại nếu bạn vẫn muốn dùng CreatePostPage riêng
+            // {
+            //     path: 'create-post',
+            //     element: (
+            //         <ProtectedRoute>
+            //             <CreatePostPage />
+            //         </ProtectedRoute>
+            //     ),
+            // },
         ],
     },
 
-    // Payment result page (public, after redirect from payment gateway)
+    // ====================== PAYMENT ROUTES ======================
+    { path: '/payment/result', element: <PaymentResultPage /> },
+    { path: '/payment/success', element: <PaymentSuccessPage /> },
+    { path: '/payment/failed', element: <PaymentResultPage /> },
+    { path: '/payment/vnpay-callback', element: <VNPayCallbackPage /> },
+
+    // Public Profile (nếu người dùng xem profile công khai)
     {
-        path: '/payment/result',
-        element: <PaymentResultPage />,
-    },
-    {
-        path: '/payment/success',
-        element: <PaymentSuccessPage />,
-    },
-    {
-        path: '/payment/vnpay-callback',
-        element: <VNPayCallbackPage />,
-    },
-    {
-        path: '/payment/failed',
-        element: <PaymentResultPage />,
+        path: '/profile',
+        element: (
+            <ProtectedRoute>
+                <PublicProfilePage />
+            </ProtectedRoute>
+        ),
     },
 
-    // Admin routes (protected - ADMIN only)
+    // ====================== ADMIN ROUTES ======================
     {
         path: '/admin',
         element: (
@@ -164,33 +175,35 @@ const router = createBrowserRouter([
             { path: 'lands/create', element: <LandFormPage /> },
             { path: 'lands/:id/edit', element: <LandFormPage /> },
 
-            // Posts
+            // Posts & News
             { path: 'posts', element: <PostManagementPage /> },
 
             // Appointments
             { path: 'appointments', element: <AppointmentManagementPage /> },
+            { path: 'appointments/calendar', element: <AppointmentCalendarPage /> },
             { path: 'appointments/create', element: <AppointmentFormPage /> },
             { path: 'appointments/:id/edit', element: <AppointmentFormPage /> },
 
-            // Users
+            // User Management
             { path: 'users', element: <UserManagementPage /> },
             { path: 'customers', element: <CustomerManagementPage /> },
             { path: 'employees', element: <EmployeeManagementPage /> },
 
-            // Roles & Categories
+            // Others
             { path: 'roles', element: <RoleManagementPage /> },
             { path: 'categories', element: <CategoryManagementPage /> },
-
-            // Favorites & Profile
             { path: 'favorites', element: <FavoriteManagementPage /> },
             { path: 'profile', element: <ProfilePage /> },
 
             // VIP & Payment
             { path: 'payment-history', element: <PaymentHistoryPage /> },
+            { path: 'vip-packages', element: <VipPackageManagementPage /> },
+            { path: 'vip-packages/create', element: <VipPackageFormPage /> },
+            { path: 'vip-packages/:id/edit', element: <VipPackageFormPage /> }, // sửa :id thành :id/edit cho rõ
         ],
     },
 
-    // Employee routes (protected - EMPLOYEE only)
+    // ====================== EMPLOYEE ROUTES ======================
     {
         path: '/employee',
         element: (
@@ -201,6 +214,7 @@ const router = createBrowserRouter([
         children: [
             { index: true, element: <EmployeeAppointmentPage /> },
             { path: 'appointments', element: <EmployeeAppointmentPage /> },
+            { path: 'calendar', element: <EmployeeCalendarPage /> },
             { path: 'profile', element: <ProfilePage /> },
         ],
     },

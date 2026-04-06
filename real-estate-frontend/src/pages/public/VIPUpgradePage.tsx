@@ -80,9 +80,9 @@ const VIPUpgradePage = () => {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
-  const [paymentResult, setPaymentResult] = useState<PaymentResult | null>(null);
+  const [paymentResult] = useState<PaymentResult | null>(null);
   const [showResultModal, setShowResultModal] = useState(false);
-  const [resultStatus, setResultStatus] = useState<'success' | 'failed'>('success');
+  const [resultStatus] = useState<'success' | 'failed'>('success');
   const { user } = useAuthStore();
 
   useEffect(() => {

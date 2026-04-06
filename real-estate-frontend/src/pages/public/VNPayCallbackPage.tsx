@@ -2,6 +2,19 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Spin, Result, Button } from 'antd';
 
+function getVNPayErrorMessage(responseCode: string | null): string {
+  const errorCodes: Record<string, string> = {
+    '24': 'Bạn đã hủy giao dịch thanh toán.',
+    '11': 'Thẻ/Tài khoản của bạn đã hết hạn.',
+    '12': 'Thẻ/Tài khoản của bạn bị khóa.',
+    '51': 'Tài khoản của bạn không đủ số dư.',
+    '65': 'Tài khoản đã vượt quá hạn mức giao dịch trong ngày.',
+    '75': 'Ngân hàng thanh toán đang bảo trì.',
+    '99': 'Lỗi không xác định từ VNPay.',
+  };
+  return responseCode ? (errorCodes[responseCode] || 'Giao dịch thất bại.') : 'Giao dịch thất bại.';
+}
+
 const VNPayCallbackPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -32,19 +45,6 @@ const VNPayCallbackPage = () => {
 
     setLoading(false);
   }, []);
-
-  const getVNPayErrorMessage = (responseCode: string | null): string => {
-    const errorCodes: Record<string, string> = {
-      '24': 'Bạn đã hủy giao dịch thanh toán.',
-      '11': 'Thẻ/Tài khoản của bạn đã hết hạn.',
-      '12': 'Thẻ/Tài khoản của bạn bị khóa.',
-      '51': 'Tài khoản của bạn không đủ số dư.',
-      '65': 'Tài khoản đã vượt quá hạn mức giao dịch trong ngày.',
-      '75': 'Ngân hàng thanh toán đang bảo trì.',
-      '99': 'Lỗi không xác định từ VNPay.',
-    };
-    return responseCode ? (errorCodes[responseCode] || 'Giao dịch thất bại.') : 'Giao dịch thất bại.';
-  };
 
   if (loading) {
     return (

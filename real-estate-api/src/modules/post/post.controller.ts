@@ -17,7 +17,7 @@ import {
 import { AuthGuard } from '@nestjs/passport';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { PostService } from './post.service';
-import { CreatePostDto, UpdatePostDto } from './dto/post.dto';
+import { CreatePostDto, UpdatePostDto, PostType } from './dto/post.dto';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 
@@ -26,38 +26,44 @@ export class PostController {
     constructor(private readonly postService: PostService) {}
 
     @Get('approved')
-    findApproved(@Query('page') page = 1, @Query('limit') limit = 6) {
-        return this.postService.findApproved(+page, +limit);
+    findApproved(
+        @Query('page') page = 1,
+        @Query('limit') limit = 6,
+        @Query('postType') postType?: PostType,
+    ) {
+        return this.postService.findApproved(+page, +limit, postType);
     }
 
     @Get('pending')
     @UseGuards(AuthGuard('jwt'), RolesGuard)
     @Roles('ADMIN')
-    findPending() {
-        return this.postService.findPending();
+    findPending(@Query('postType') postType?: PostType) {
+        return this.postService.findPending(postType);
     }
 
     @Get('all')
     @UseGuards(AuthGuard('jwt'), RolesGuard)
     @Roles('ADMIN')
     findAll(
-        @Query('page') page?: string, 
+        @Query('page') page?: string,
         @Query('limit') limit?: string,
         @Query('status') status?: string,
-        @Query('search') search?: string
+        @Query('search') search?: string,
+        @Query('postType') postType?: PostType,
     ) {
         return this.postService.findAll({
             page: page ? +page : 1,
             limit: limit ? +limit : 10,
             status: status ? +status : undefined,
-            search: search
+            search,
+            postType,
         });
     }
-  
+
     @Get('my-posts')
     @UseGuards(AuthGuard('jwt'))
-    findByUser(@Req() req: any) {
-        return this.postService.findByUser(req.user.id);
+    findByUser(@Req() req: any, @Query('postType') postType?: PostType) {
+        return this.postService.findByUser(req.user.id, postType);
     }
 
     @Get(':id')
@@ -69,11 +75,27 @@ export class PostController {
     @UseGuards(AuthGuard('jwt'))
     @UseInterceptors(FilesInterceptor('images', 10))
     create(
-        @Body() dto: CreatePostDto,
+        @Body(new ValidationPipe({ transform: true, whitelist: true })) dto: CreatePostDto,
         @Req() req: any,
         @UploadedFiles() files: Express.Multer.File[],
     ) {
-        return this.postService.create(dto, req.user.id, files);
+        return this.postService.create(dto, req.user.id, files, req.user.roles);
+    }
+
+    @Put(':id')
+    @UseGuards(AuthGuard('jwt'))
+    @UseInterceptors(FilesInterceptor('images', 10))
+    update(
+        @Param('id', ParseIntPipe) id: number,
+        @Body(new ValidationPipe({
+            transform: true,
+            whitelist: true,
+            forbidNonWhitelisted: true,
+        })) dto: UpdatePostDto,
+        @UploadedFiles() files: Express.Multer.File[],
+        @Req() req: any,
+    ) {
+        return this.postService.update(id, dto, req.user.id, files);
     }
 
     @Put(':id/approve')
@@ -90,27 +112,9 @@ export class PostController {
         return this.postService.reject(id);
     }
 
-    @Put(':id')
-    @UseGuards(AuthGuard('jwt'))
-    @UseInterceptors(FilesInterceptor('images', 10))
-    update(
-        @Param('id', ParseIntPipe) id: number,
-        @Body(new ValidationPipe({ 
-            transform: true,
-            whitelist: true,
-            forbidNonWhitelisted: true 
-        })) dto: UpdatePostDto,
-        @UploadedFiles() files: Express.Multer.File[],
-        @Req() req: any,
-    ) {
-        return this.postService.update(id, dto, req.user.id, files); 
-    }
-
     @Delete(':id')
     @UseGuards(AuthGuard('jwt'))
     delete(@Param('id', ParseIntPipe) id: number, @Req() req: any) {
         return this.postService.delete(id, req.user.id);
     }
 }
-
-

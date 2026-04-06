@@ -113,6 +113,8 @@ services:
         condition: service_healthy
 
   # ============ React Frontend ============
+  # Volume frontend_node_modules có thể lệch package-lock sau khi pull → thiếu gói.
+  # Một lần: docker compose run --rm frontend npm ci
   frontend:
     build:
       context: ./real-estate-frontend

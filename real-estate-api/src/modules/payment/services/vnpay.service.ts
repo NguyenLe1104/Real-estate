@@ -65,7 +65,7 @@ export class VNPayService {
         return paymentUrl;
     }
 
-    verifyReturnUrl(vnp_Params: any): { isValid: boolean; responseCode: string } {
+    verifyReturnUrl(vnp_Params: Record<string, string>): { isValid: boolean; responseCode: string } {
         const secureHash = vnp_Params['vnp_SecureHash'];
 
         const params = { ...vnp_Params };
@@ -93,7 +93,7 @@ export class VNPayService {
         return `${year}${month}${day}${hour}${minute}${second}`;
     }
 
-    private sortObject(obj: Record<string, any>): Record<string, string> {
+    private sortObject(obj: Record<string, string | number>): Record<string, string> {
         const sorted: Record<string, string> = {};
         const keys = Object.keys(obj).sort();
 

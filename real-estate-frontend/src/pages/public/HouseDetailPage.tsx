@@ -1,14 +1,13 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { message } from 'antd';
 import { HeartOutlined, HeartFilled, CalendarOutlined } from '@ant-design/icons';
 import { houseApi, recommendationApi } from '@/api';
 import { useFavorites } from '@/context/FavoritesContext';
 import { Loading } from '@/components/common';
 import { formatCurrency, formatArea, getFullAddress, formatDateTime } from '@/utils';
 import { useAuthStore } from '@/stores/authStore';
+import { toast } from 'react-hot-toast';
 import type { House } from '@/types';
-
 
 const getImages = (house: House): string[] => {
     if (!house.images || house.images.length === 0) return [];
@@ -352,16 +351,14 @@ const HouseDetailPage: React.FC = () => {
     const [house, setHouse] = useState<House | null>(null);
     const [loading, setLoading] = useState(true);
 
-    // Quay lại đúng trang + filter:
-    // List page truyền: navigate(`/houses/${id}?from=${encodeURIComponent(location.pathname + location.search)}`)
-    // Ví dụ: ?from=%2Fhouses%3Fpage%3D5%26category%3D1%26minPrice%3D500
+    // Quay lại đúng trang + filter (list có thể truyền ?from=...)
     const searchParams = new URLSearchParams(location.search);
     const fromUrl = searchParams.get('from');
     const handleBack = () => {
         if (fromUrl) {
-            navigate(decodeURIComponent(fromUrl));   // khôi phục toàn bộ URL gốc kể cả filter
+            navigate(decodeURIComponent(fromUrl));
         } else {
-            navigate(-1);                            // fallback: browser history
+            navigate(-1);
         }
     };
 
@@ -374,7 +371,7 @@ const HouseDetailPage: React.FC = () => {
             const res = await houseApi.getById(houseId);
             setHouse(res.data.data || res.data);
         } catch {
-            message.error('Không tìm thấy bất động sản');
+            toast.error('Không tìm thấy bất động sản');
             navigate('/houses');
         } finally {
             setLoading(false);
@@ -383,7 +380,7 @@ const HouseDetailPage: React.FC = () => {
 
     const handleFavorite = async () => {
         if (!isAuthenticated) {
-            message.warning('Vui lòng đăng nhập để yêu thích');
+            toast.error('Vui lòng đăng nhập để yêu thích');   // ← Chỉ sửa dòng này
             navigate('/login');
             return;
         }
@@ -397,8 +394,10 @@ const HouseDetailPage: React.FC = () => {
                 message.success('Đã thêm vào yêu thích');
                 recommendationApi.trackBehavior({ action: 'save', houseId: house!.id }).catch(() => { });
             }
+            setIsFavorited(!isFavorited);
+            toast.success(isFavorited ? 'Đã bỏ yêu thích' : 'Đã thêm vào yêu thích');
         } catch {
-            message.error('Có lỗi xảy ra');
+            toast.error('Có lỗi xảy ra');
         }
     };
 
@@ -465,8 +464,8 @@ const HouseDetailPage: React.FC = () => {
                 {/* ── Gallery ───────────────────────────────────────────── */}
                 <Gallery images={images} title={house.title} />
 
+                {/* Thông tin chi tiết + Sidebar + Bản đồ */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-10 items-start">
-
                     <div className="lg:col-span-2">
                         <h2 className="text-[18px] font-bold text-[#1a1a1a] mb-4">Thông Tin Chi Tiết</h2>
                         <div className="border border-gray-200 rounded-xl overflow-hidden">
@@ -518,8 +517,6 @@ const HouseDetailPage: React.FC = () => {
                     <div className="lg:col-span-1">
                         <div className="text-[18px] font-bold mb-4 invisible select-none">Thông Tin Chi Tiết</div>
                         <div className="border border-gray-200 rounded-xl p-5 shadow-sm sticky top-6">
-
-                            {/* Tên + địa chỉ */}
                             <div className="flex items-start gap-2 mb-4 pb-4 border-b border-gray-100">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="#f5a623" stroke="#f5a623" strokeWidth="1" className="shrink-0 mt-0.5">
                                     <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
@@ -536,7 +533,6 @@ const HouseDetailPage: React.FC = () => {
                                 </div>
                             </div>
 
-                            {/* Giá */}
                             <p className="text-[22px] font-bold text-[#254b86] mb-5 text-center">
                                 {formatCurrency(house.price)}
                             </p>

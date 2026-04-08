@@ -18,6 +18,8 @@ export class ProfileService {
                 email: true,
                 address: true,
                 status: true,
+                isVip: true,
+                vipExpiry: true,
                 createdAt: true,
                 userRoles: { include: { role: { select: { code: true, name: true } } } },
             },

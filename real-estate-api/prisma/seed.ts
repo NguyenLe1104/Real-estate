@@ -48,20 +48,20 @@ async function main() {
 
     // Create property categories
     const categories = [
-        { code: 'HOUSE', name: 'House' },
-        { code: 'VILLA', name: 'Villa' },
-        { code: 'APARTMENT', name: 'Apartment' },
-        { code: 'TOWNHOUSE', name: 'Townhouse' },
-        { code: 'RESLAND', name: 'Residential Land' },
-        { code: 'COMLAND', name: 'Commercial Land' },
-        { code: 'AGRLAND', name: 'Agricultural Land' },
-        { code: 'INDLAND', name: 'Industrial Land' },
+        { code: 'HOUSE', name: 'Nhà ở' },
+        { code: 'VILLA', name: 'Biệt thự' },
+        { code: 'APARTMENT', name: 'Chung cư' },
+        { code: 'TOWNHOUSE', name: 'Nhà phố' },
+        { code: 'RESLAND', name: 'Đất ở' },
+        { code: 'COMLAND', name: 'Đất thương mại' },
+        { code: 'AGRLAND', name: 'Đất nông nghiệp' },
+        { code: 'INDLAND', name: 'Đất công nghiệp' },
     ];
 
     for (const cat of categories) {
         await prisma.propertyCategory.upsert({
             where: { code: cat.code },
-            update: {},
+            update: { name: cat.name },
             create: cat,
         });
     }

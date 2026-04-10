@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import DOMPurify from 'dompurify';
 import { postApi } from '@/api';
@@ -32,6 +32,8 @@ const PostManagementPage: React.FC = () => {
     const [deletePost, setDeletePost] = useState<Post | null>(null);
     const [deleting, setDeleting] = useState(false);
     const [submitting, setSubmitting] = useState(false);
+    const [formRenderKey, setFormRenderKey] = useState('admin-post-form-create');
+    const formScrollRef = useRef<HTMLDivElement>(null);
     const loadPosts = useCallback(async () => {
         setLoading(true);
         try {
@@ -119,8 +121,15 @@ const PostManagementPage: React.FC = () => {
 
     const openModal = (record?: Post) => {
         setEditingPost(record || null);
+        setFormRenderKey(record ? `admin-post-form-edit-${record.id}-${Date.now()}` : `admin-post-form-create-${Date.now()}`);
         setModalOpen(true);
     };
+
+    useEffect(() => {
+        if (modalOpen && formScrollRef.current) {
+            formScrollRef.current.scrollTop = 0;
+        }
+    }, [modalOpen, formRenderKey]);
 
     const handleSubmit = async (submitData: FormData) => {
         setSubmitting(true);
@@ -180,7 +189,7 @@ const PostManagementPage: React.FC = () => {
                         alt="thumb"
                         className="h-[50px] w-[60px] cursor-pointer rounded object-cover"
                         onClick={() => {
-                           setPreviewImages(record.images?.map((img) => img.url) || []);
+                            setPreviewImages(record.images?.map((img) => img.url) || []);
                             setPreviewIndex(0);
                             setPreviewOpen(true);
                         }}
@@ -312,10 +321,9 @@ const PostManagementPage: React.FC = () => {
     ];
 
     const tabButtonClass = (active: boolean) =>
-        `inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition ${
-            active
-                ? 'border-brand-500 bg-brand-50 text-brand-600'
-                : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+        `inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition ${active
+            ? 'border-brand-500 bg-brand-50 text-brand-600'
+            : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
         }`;
 
     return (
@@ -411,8 +419,9 @@ const PostManagementPage: React.FC = () => {
                 onClose={() => setModalOpen(false)}
                 width="max-w-4xl"
             >
-                <div className="max-h-[70vh] overflow-y-auto pr-2">
+                <div ref={formScrollRef} className="max-h-[70vh] overflow-y-auto pr-2">
                     <PostForm
+                        key={formRenderKey}
                         initialData={editingPost ? {
                             postType: editingPost.postType as PostType,
                             title: editingPost.title,
@@ -446,6 +455,7 @@ const PostManagementPage: React.FC = () => {
                         onCancel={() => setModalOpen(false)}
                         submitLabel={editingPost ? 'Cập nhật' : 'Thêm mới'}
                         isLoading={submitting}
+                        postTypeSelectorMode="cards"
                     />
                 </div>
             </Modal>

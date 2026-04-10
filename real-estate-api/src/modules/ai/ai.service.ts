@@ -1,9 +1,11 @@
-﻿import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import axios from 'axios';
 import { PrismaService } from '../../prisma/prisma.service';
 import { RedisService } from '../../common/redis/redis.service';
 import { ChatDto } from './dto/chat.dto';
+import { GenerateDescriptionDto } from './dto/generate-description.dto';
 import { AiChatCompareService } from './ai-chat-compare.service';
+import { DescriptionGeneratorService } from './services';
 
 type IndexedDoc = {
     id: number;
@@ -112,6 +114,7 @@ export class AiService {
         private readonly prisma: PrismaService,
         private readonly redis: RedisService,
         private readonly compareService: AiChatCompareService,
+        private readonly descriptionGeneratorService: DescriptionGeneratorService,
     ) { }
 
     async indexOne(type: 'house' | 'land' | 'post', id: number): Promise<void> {
@@ -558,7 +561,7 @@ export class AiService {
                 return null;
             }
 
-            const genAnswer = await this.generatePropertyDescription(question, conversation);
+            const genAnswer = await this.descriptionGeneratorService.generatePropertyDescription(question, conversation);
             return this.returnChatWithMemory(sessionId, question, conversation, {
                 answer: genAnswer,
                 structured: null,
@@ -607,7 +610,7 @@ export class AiService {
             });
         }
 
-        const genAnswer = await this.generatePropertyDescription(question, conversation);
+        const genAnswer = await this.descriptionGeneratorService.generatePropertyDescription(question, conversation);
         return this.returnChatWithMemory(sessionId, question, conversation, {
             answer: genAnswer,
             structured: null,
@@ -996,120 +999,6 @@ export class AiService {
         return detailCount >= 2;
     }
 
-    /**
-     * Calls LLM to generate a professional real-estate listing description
-     * based on the property info the user provided.
-     */
-    private async generatePropertyDescription(question: string, conversation: ConversationState): Promise<string> {
-        // Collect property info: prefer last user message in history if current question is the follow-up
-        const lastUserTurns = conversation.memory
-            .filter((t) => t.role === 'user')
-            .slice(-2)
-            .map((t) => t.text)
-            .join('\n');
-        const propertyInfo = question.length > 20 ? question : lastUserTurns || question;
-
-        const prompt = [
-            'Bạn là chuyên gia viết nội dung bất động sản Việt Nam.',
-            'Dựa vào thông tin BĐS bên dưới, hãy viết bài đăng bán/cho thuê ngắn gọn bằng tiếng Việt có dấu.',
-            'Định dạng bắt buộc:',
-            'TIÊU ĐỀ: [1 dòng, ngắn gọn, có loại BĐS + vị trí + điểm nổi bật]',
-            'MÔ TẢ: [80-150 từ: tổng quan, vị trí, đặc điểm chính, pháp lý, lời kêu gọi]',
-            'Nếu thiếu thông tin, dùng placeholder [...]. Không bịa dữ liệu.',
-            'Kết thúc bằng dòng: --- Bạn có thể copy đoạn mô tả trên để đăng bài! ---',
-            '',
-            `Thông tin BĐS: ${propertyInfo}`,
-        ].join('\n');
-
-        try {
-            const resp = await axios.post(
-                `${this.ollamaUrl}/api/generate`,
-                {
-                    model: this.chatModel,
-                    prompt,
-                    stream: false,
-                    options: { num_predict: 400, temperature: 0.4 },
-                },
-                { timeout: this.ollamaTimeoutMs * 3 },
-            );
-            const raw = String(resp.data?.response || '').trim();
-            if (raw.length > 50) return raw;
-        } catch (error) {
-            this.logger.warn(`generatePropertyDescription LLM error: ${this.stringifyError(error)}`);
-        }
-
-        // Template-based fallback — always produces a usable result
-        return this.buildTemplateDescription(propertyInfo);
-    }
-
-    private buildTemplateDescription(info: string): string {
-        const n = this.normalizeText(info);
-
-        const typeMap: [RegExp, string][] = [
-            [/\b(biet thu)\b/, 'Biệt thự'],
-            [/\b(can ho|chung cu)\b/, 'Căn hộ chung cư'],
-            [/\b(shophouse)\b/, 'Shophouse'],
-            [/\b(dat nen|dat)\b/, 'Đất nền'],
-            [/\b(nha pho)\b/, 'Nhà phố'],
-            [/\b(nha cap 4)\b/, 'Nhà cấp 4'],
-            [/\bnha\b/, 'Nhà'],
-        ];
-        const propType = typeMap.find(([re]) => re.test(n))?.[1] ?? 'Bất động sản';
-
-        const areaMatch = n.match(/(\d+[\d.,]*)\s*m[2²]/);
-        const area = areaMatch ? `${areaMatch[1]}m²` : null;
-
-        const priceMatch = n.match(/(\d+[\d.,]*)\s*(ty|trieu|tr)/);
-        const price = priceMatch
-            ? `${priceMatch[1]} ${priceMatch[2] === 'ty' ? 'tỷ' : 'triệu'} đồng`
-            : null;
-
-        const bedroomMatch = n.match(/(\d+)\s*(pn|phong ngu|phong)/);
-        const bedrooms = bedroomMatch ? `${bedroomMatch[1]} phòng ngủ` : null;
-
-        const floorMatch = n.match(/(\d+)\s*tang/);
-        const floors = floorMatch ? `${floorMatch[1]} tầng` : null;
-
-        const locationMatch = info.match(/(quận|huyện|phường|xã|đường|thành phố|TP\.?\s*\w+|Hà Nội|HCM|Đà Nẵng)[^,.\n]*/i);
-        const location = locationMatch ? locationMatch[0].trim() : null;
-
-        const legalMatch = n.match(/(so hong|so do|so rieng|chu quyen)/);
-        const legal = legalMatch
-            ? legalMatch[1] === 'so hong' ? 'Sổ hồng' : legalMatch[1] === 'so do' ? 'Sổ đỏ' : 'Pháp lý đầy đủ'
-            : null;
-
-        const action = /cho thue/.test(n) ? 'Cho thuê' : 'Bán';
-
-        const titleParts = [action, propType, area, location, price].filter(Boolean);
-        const title = titleParts.join(' – ');
-
-        const details = [
-            `- Loại BĐS: ${propType}`,
-            area ? `- Diện tích: ${area}` : null,
-            bedrooms ? `- Số phòng ngủ: ${bedrooms}` : null,
-            floors ? `- Số tầng: ${floors}` : null,
-            location ? `- Vị trí: ${location}` : null,
-            legal ? `- Pháp lý: ${legal}` : null,
-            price ? `- Giá ${action === 'Bán' ? 'bán' : 'thuê'}: ${price}` : null,
-        ].filter(Boolean).join('\n');
-
-        return [
-            `TIÊU ĐỀ: ${title}`,
-            '',
-            'MÔ TẢ:',
-            `${action} ${propType.toLowerCase()}${location ? ` tọa lạc tại ${location}` : ''}${area ? `, diện tích ${area}` : ''}.`,
-            bedrooms || floors ? `Căn nhà ${[bedrooms, floors].filter(Boolean).join(', ')}, thiết kế hợp lý, không gian thoáng mát.` : '',
-            legal ? `Pháp lý minh bạch, ${legal} chính chủ, giao dịch an toàn.` : '',
-            price ? `Giá ${action === 'Bán' ? 'bán' : 'thuê'}: **${price}** – thương lượng cho khách thiện chí.` : '',
-            '',
-            'Chi tiết:',
-            details,
-            '',
-            'Liên hệ ngay để được tư vấn và xem nhà thực tế!',
-            '',
-            '--- Bạn có thể copy đoạn mô tả trên để đăng bài! ---',
-        ].filter((l) => l !== '').join('\n');
-    }
 
     private answerQA(question: string): { answer: string; suggestedQuestions: string[] } | null {
         const normalized = this.normalizeText(question);
@@ -1942,5 +1831,9 @@ export class AiService {
 
         await Promise.all(Array.from({ length: Math.min(safeConcurrency, items.length) }, () => worker()));
         return results;
+    }
+
+    async generateDescription(dto: GenerateDescriptionDto): Promise<{ description: string }> {
+        return this.descriptionGeneratorService.generateDescription(dto);
     }
 }

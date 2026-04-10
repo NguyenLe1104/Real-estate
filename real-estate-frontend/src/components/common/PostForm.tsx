@@ -1,9 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { CKEditor } from '@ckeditor/ckeditor5-react';
 import ClassicEditor from '@ckeditor/ckeditor5-build-classic/build/ckeditor';
+import { StarFilled } from '@ant-design/icons';
+import { message } from 'antd';
 import PostTypeSelector from './PostTypeSelector';
+import AiDescriptionGeneratorModal from './AiDescriptionGeneratorModal';
+import { aiApi } from '@/api/ai';
 import { PostType, POST_TYPE_GROUPS } from '@/types/post';
 import type { CreatePostDto } from '@/types/post';
+import { useVietnamAddress } from '@/hooks/UseAddressVN';
 
 type UploadImage = {
     uid: string;
@@ -19,6 +24,7 @@ interface PostFormProps {
     onCancel: () => void;
     submitLabel?: string;
     isLoading?: boolean;
+    postTypeSelectorMode?: 'select' | 'cards';
 }
 
 const PostForm: React.FC<PostFormProps> = ({
@@ -27,11 +33,16 @@ const PostForm: React.FC<PostFormProps> = ({
     onCancel,
     submitLabel = 'Lưu',
     isLoading = false,
+    postTypeSelectorMode = 'select',
 }) => {
     const [postType, setPostType] = useState<PostType | ''>(initialData?.postType || '');
     const [formData, setFormData] = useState<Partial<CreatePostDto>>(initialData || {});
     const [fileList, setFileList] = useState<UploadImage[]>([]);
     const [errors, setErrors] = useState<Record<string, string>>({});
+
+    const [isAiModalOpen, setIsAiModalOpen] = useState(false);
+    const [isGeneratingAi, setIsGeneratingAi] = useState(false);
+    const { provinces, wards, loadWards, resetAddress } = useVietnamAddress();
 
     const propertyTypeSet = new Set<PostType>(POST_TYPE_GROUPS.PROPERTY as readonly PostType[]);
     const needTypeSet = new Set<PostType>(POST_TYPE_GROUPS.NEED as readonly PostType[]);
@@ -50,6 +61,20 @@ const PostForm: React.FC<PostFormProps> = ({
             );
         }
     }, [initialData]);
+
+    useEffect(() => {
+        if (formData.city) {
+            loadWards(formData.city);
+        } else {
+            resetAddress();
+        }
+    }, [formData.city, loadWards, resetAddress]);
+
+    const handleCityChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        handleFieldChange('city', e.target.value);
+        handleFieldChange('district', '');
+        handleFieldChange('ward', '');
+    };
 
     // Reset form when post type changes
     useEffect(() => {
@@ -166,6 +191,71 @@ const PostForm: React.FC<PostFormProps> = ({
         await onSubmit(submitData);
     };
 
+    const handleGenerateAiDescription = async (tone: 'polite' | 'friendly') => {
+        if (!postType) {
+            message.warning('Vui lòng chọn loại bài đăng trước khi tạo mô tả');
+            setIsAiModalOpen(false);
+            return;
+        }
+        if (!formData.title) {
+            message.warning('Vui lòng nhập tiêu đề để AI hiểu bạn muốn bán/cho thuê gì');
+            setIsAiModalOpen(false);
+            return;
+        }
+
+        try {
+            setIsGeneratingAi(true);
+
+            const payload = {
+                tone,
+                postType,
+                title: formData.title,
+                city: formData.city,
+                district: formData.district,
+                ward: formData.ward,
+                address: formData.address,
+                price: formData.price,
+                area: formData.area,
+                bedrooms: formData.bedrooms,
+                bathrooms: formData.bathrooms,
+                floors: formData.floors,
+                frontWidth: formData.frontWidth,
+                landLength: formData.landLength,
+                landType: formData.landType,
+                direction: formData.direction,
+                legalStatus: formData.legalStatus,
+                minPrice: formData.minPrice,
+                maxPrice: formData.maxPrice,
+                minArea: formData.minArea,
+                maxArea: formData.maxArea,
+                startDate: formData.startDate,
+                endDate: formData.endDate,
+                discountCode: formData.discountCode,
+                contactPhone: formData.contactPhone,
+                contactLink: formData.contactLink,
+            };
+
+            const data = await aiApi.generateDescription(payload);
+            let fullText = data.description || '';
+
+            // Convert text newlines to HTML breaks for CKEditor, and handle Markdown bold loosely
+            let formattedText = fullText.replace(/(?:\r\n|\r|\n)/g, '<br/>');
+            // Basic markdown bold to HTML bold since CKEditor prefers HTML
+            formattedText = formattedText.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+
+            handleFieldChange('description', formattedText);
+
+            message.success('Tạo mô tả thành công!');
+            setIsAiModalOpen(false); // Close modal when finished
+        } catch (error) {
+            message.error('Có lỗi xảy ra khi tạo mô tả, vui lòng thử lại sau.');
+            console.error('AI Desc Generator error:', error);
+            setIsAiModalOpen(false);
+        } finally {
+            setIsGeneratingAi(false);
+        }
+    };
+
     const isPropertyType = postType !== '' && propertyTypeSet.has(postType);
     const isNeedType = postType !== '' && needTypeSet.has(postType);
     const isContentType = postType !== '' && contentTypeSet.has(postType);
@@ -190,6 +280,7 @@ const PostForm: React.FC<PostFormProps> = ({
                 value={postType}
                 onChange={(value) => setPostType(value)}
                 disabled={!!initialData?.postType}
+                mode={postTypeSelectorMode}
             />
             {errors.postType && <p className="text-xs text-red-500">{errors.postType}</p>}
 
@@ -216,13 +307,16 @@ const PostForm: React.FC<PostFormProps> = ({
                             <label className="mb-1 block text-sm font-medium text-gray-700">
                                 Thành phố <span className="text-red-500">*</span>
                             </label>
-                            <input
-                                type="text"
+                            <select
                                 value={formData.city || ''}
-                                onChange={(e) => handleFieldChange('city', e.target.value)}
+                                onChange={handleCityChange}
                                 className={inputClass('city')}
-                                placeholder="TP. Hồ Chí Minh"
-                            />
+                            >
+                                <option value="" disabled>-- Chọn Tỉnh/Thành phố --</option>
+                                {provinces.map((p) => (
+                                    <option key={p.province_code} value={p.name}>{p.name}</option>
+                                ))}
+                            </select>
                             {renderFieldError('city')}
                         </div>
                         <div>
@@ -234,7 +328,7 @@ const PostForm: React.FC<PostFormProps> = ({
                                 value={formData.district || ''}
                                 onChange={(e) => handleFieldChange('district', e.target.value)}
                                 className={inputClass('district')}
-                                placeholder="Quận 1"
+                                placeholder="Nhập quận/huyện (không bắt buộc)"
                             />
                             {renderFieldError('district')}
                         </div>
@@ -242,13 +336,17 @@ const PostForm: React.FC<PostFormProps> = ({
                             <label className="mb-1 block text-sm font-medium text-gray-700">
                                 Phường/Xã {isPropertyType && <span className="text-red-500">*</span>}
                             </label>
-                            <input
-                                type="text"
+                            <select
                                 value={formData.ward || ''}
                                 onChange={(e) => handleFieldChange('ward', e.target.value)}
-                                className={inputClass('ward')}
-                                placeholder="Phường Bến Nghé"
-                            />
+                                disabled={!formData.city}
+                                className={inputClass('ward') + ' disabled:bg-gray-100'}
+                            >
+                                <option value="" disabled>-- Chọn Phường/Xã --</option>
+                                {wards.map((w) => (
+                                    <option key={w.ward_code} value={w.ward_name}>{w.ward_name}</option>
+                                ))}
+                            </select>
                             {renderFieldError('ward')}
                         </div>
                     </div>
@@ -578,10 +676,20 @@ const PostForm: React.FC<PostFormProps> = ({
 
             {/* Description - CKEditor */}
             <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">
-                    Mô tả <span className="text-red-500">*</span>
-                </label>
-                <div className={errors.description ? 'rounded-lg border border-red-500' : ''}>
+                <div className="mb-2 flex items-center justify-between">
+                    <label className="block text-sm font-medium text-gray-700">
+                        Mô tả <span className="text-red-500">*</span>
+                    </label>
+                    <button
+                        type="button"
+                        onClick={() => setIsAiModalOpen(true)}
+                        className="group flex items-center gap-1.5 rounded-full bg-gradient-to-r from-brand-500 to-indigo-600 px-3 py-1.5 text-xs font-semibold text-white shadow-md shadow-brand-500/30 transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-brand-500/40"
+                    >
+                        <StarFilled className="text-yellow-300 group-hover:animate-pulse" />
+                        Tạo tự động bằng AI
+                    </button>
+                </div>
+                <div className={`post-description-editor ${errors.description ? 'rounded-lg border border-red-500' : ''}`}>
                     <CKEditor
                         editor={ClassicEditor as any}
                         data={formData.description || ''}
@@ -595,6 +703,11 @@ const PostForm: React.FC<PostFormProps> = ({
                         }}
                     />
                 </div>
+                <style>{`
+                    .post-description-editor .ck-editor__editable[role="textbox"] {
+                        min-height: 280px !important;
+                    }
+                `}</style>
                 {renderFieldError('description')}
             </div>
 
@@ -651,6 +764,13 @@ const PostForm: React.FC<PostFormProps> = ({
                     {isLoading ? 'Đang xử lý...' : submitLabel}
                 </button>
             </div>
+
+            <AiDescriptionGeneratorModal
+                isOpen={isAiModalOpen}
+                onClose={() => setIsAiModalOpen(false)}
+                onGenerate={handleGenerateAiDescription}
+                isGenerating={isGeneratingAi}
+            />
         </form>
     );
 };

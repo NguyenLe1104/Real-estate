@@ -18,11 +18,17 @@ jobs:
     steps:
       - name: Deploy lên VPS qua SSH
         uses: appleboy/ssh-action@v1.0.3
+        env:
+          ENV_ROOT: ${{ secrets.ENV_ROOT }}
+          ENV_API: ${{ secrets.ENV_API }}
+          ENV_FRONTEND: ${{ secrets.ENV_FRONTEND }}
+          ENV_AI: ${{ secrets.ENV_AI }}
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           password: ${{ secrets.VPS_PASSWORD }}
           port: ${{ secrets.VPS_PORT || 22 }}
+          envs: ENV_ROOT,ENV_API,ENV_FRONTEND,ENV_AI
           script: |
             set -e  # Dừng ngay nếu có lệnh lỗi
 
@@ -45,6 +51,12 @@ jobs:
 
             echo ">>> 🔄 Pull code mới nhất từ main..."
             git pull origin main
+
+            echo ">>> 🔑 Tiêm (Inject) cấu hình hệ thống từ Github Secrets xuống VPS..."
+            echo "$ENV_ROOT" > .env
+            echo "$ENV_API" > real-estate-api/.env
+            echo "$ENV_FRONTEND" > real-estate-frontend/.env
+            echo "$ENV_AI" > real-estate-AI/.env
 
             echo ">>> 🐳 Rebuild và restart các containers..."
             docker compose down

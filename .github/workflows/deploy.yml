@@ -26,6 +26,14 @@ jobs:
           script: |
             set -e  # Dừng ngay nếu có lệnh lỗi
 
+            echo ">>> 🐳 Kiểm tra cài đặt Docker..."
+            if ! [ -x "$(command -v docker)" ]; then
+              echo ">>> Docker chưa được cài đặt. Tiến hành cài đặt tự động..."
+              curl -fsSL https://get.docker.com -o get-docker.sh
+              sh get-docker.sh
+              rm get-docker.sh
+            fi
+
             echo ">>> 📁 Kiểm tra thư mục dự án..."
             if [ ! -d "${{ secrets.VPS_PROJECT_PATH }}" ]; then
               echo ">>> Thư mục chưa tồn tại, đang tiến hành git clone lần đầu..."

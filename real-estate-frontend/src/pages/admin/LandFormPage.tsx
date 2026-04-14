@@ -16,6 +16,14 @@ interface FileItem {
     preview?: string;
 }
 
+const DECIMAL_LAND_FIELDS = new Set(['area', 'frontWidth', 'landLength']);
+
+const normalizeDecimalString = (value: string): string => {
+    const trimmed = value.trim();
+    if (!trimmed.includes(',')) return trimmed;
+    return trimmed.replace(/\./g, '').replace(',', '.');
+};
+
 const LandFormPage: React.FC = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
@@ -40,7 +48,6 @@ const LandFormPage: React.FC = () => {
         direction: '',
         frontWidth: '',
         landLength: '',
-        landType: '',
         legalStatus: '',
         employeeId: '',
         status: 1,
@@ -82,7 +89,6 @@ const LandFormPage: React.FC = () => {
                 direction: land.direction || '',
                 frontWidth: land.frontWidth || '',
                 landLength: land.landLength || '',
-                landType: land.landType || '',
                 legalStatus: land.legalStatus || '',
                 employeeId: land.employeeId || '',
                 status: land.status ?? 1,
@@ -126,7 +132,10 @@ const LandFormPage: React.FC = () => {
             const submitData = new FormData();
             Object.entries(formData).forEach(([key, value]) => {
                 if (value !== undefined && value !== null && value !== '') {
-                    submitData.append(key, String(value));
+                    const payloadValue = DECIMAL_LAND_FIELDS.has(key)
+                        ? normalizeDecimalString(String(value))
+                        : String(value);
+                    submitData.append(key, payloadValue);
                 }
             });
 
@@ -281,7 +290,14 @@ const LandFormPage: React.FC = () => {
                         </div>
                         <div>
                             <label className={labelClass}>Diện tích (m²)</label>
-                            <input type="number" className={inputClass} min={0} value={String(formData.area || '')} onChange={(e) => setField('area', e.target.value)} />
+                            <input
+                                type="text"
+                                inputMode="decimal"
+                                className={inputClass}
+                                placeholder="vd: 10.5"
+                                value={String(formData.area || '')}
+                                onChange={(e) => setField('area', e.target.value)}
+                            />
                         </div>
                         <div>
                             <label className={labelClass}>Hướng</label>
@@ -294,19 +310,29 @@ const LandFormPage: React.FC = () => {
                         </div>
                         <div>
                             <label className={labelClass}>Mặt tiền (m)</label>
-                            <input type="number" className={inputClass} min={0} value={String(formData.frontWidth || '')} onChange={(e) => setField('frontWidth', e.target.value)} />
+                            <input
+                                type="text"
+                                inputMode="decimal"
+                                className={inputClass}
+                                placeholder="vd: 5.5"
+                                value={String(formData.frontWidth || '')}
+                                onChange={(e) => setField('frontWidth', e.target.value)}
+                            />
                         </div>
                     </div>
 
-                    {/* Row 4: Chiều dài, Loại đất, Pháp lý, Nhân viên, Trạng thái */}
-                    <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-4">
+                    {/* Row 4: Chiều dài, Pháp lý, Nhân viên, Trạng thái */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
                         <div>
                             <label className={labelClass}>Chiều dài (m)</label>
-                            <input type="number" className={inputClass} min={0} value={String(formData.landLength || '')} onChange={(e) => setField('landLength', e.target.value)} />
-                        </div>
-                        <div>
-                            <label className={labelClass}>Loại đất</label>
-                            <input type="text" className={inputClass} value={String(formData.landType || '')} onChange={(e) => setField('landType', e.target.value)} />
+                            <input
+                                type="text"
+                                inputMode="decimal"
+                                className={inputClass}
+                                placeholder="vd: 20.25"
+                                value={String(formData.landLength || '')}
+                                onChange={(e) => setField('landLength', e.target.value)}
+                            />
                         </div>
                         <div>
                             <label className={labelClass}>Pháp lý</label>

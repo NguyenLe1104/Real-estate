@@ -13,6 +13,11 @@ import danang from '@/assets/danang.png';
 import hanoi from '@/assets/hanoi.jpg';
 import cantho from '@/assets/cantho.jpeg';
 import binhduong from '@/assets/binhduong.jpg';
+import tphcm from '@/assets/tphcm.jpg';
+import bdsBan from '@/assets/bdsBan.png';
+import bdsThue from '@/assets/bdsThue.png';
+import duan from '@/assets/duan.png';
+import wikibds from '@/assets/wikibds.png';
 
 const { Title, Paragraph } = Typography;
 
@@ -508,7 +513,7 @@ const HomePage: React.FC = () => {
                 <div className="grid grid-cols-4 gap-4">
                     {/* Big card */}
                     <div className="col-span-2 row-span-2 relative rounded-xl overflow-hidden group cursor-pointer sr-reveal" style={{ '--sr-delay': '100ms' } as React.CSSProperties}>
-                        <img src="/src/assets/tphcm.jpg" className="w-full h-full object-cover group-hover:scale-105 transition" />
+                        <img src={tphcm} className="w-full h-full object-cover group-hover:scale-105 transition" />
                         <div className="absolute inset-0 bg-black/40" />
                         <div className="absolute bottom-4 left-4 text-white">
                             <h3 className="text-xl font-semibold">TP Hồ Chí Minh</h3>
@@ -626,10 +631,10 @@ const HomePage: React.FC = () => {
             <div className="bg-gray-50 py-20 px-4">
                 <div className="max-w-[1200px] mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
                     {[
-                        { img: '/src/assets/bdsBan.png', title: 'Bất động sản bán', desc: 'Bạn có thể tìm thấy ngôi nhà mơ ước hoặc cơ hội đầu tư hấp dẫn thông qua lượng tin rao lớn, uy tín.' },
-                        { img: '/src/assets/bdsThue.png', title: 'Bất động sản cho thuê', desc: 'Cập nhật thường xuyên các loại hình bất động sản cho thuê như nhà riêng, chung cư, văn phòng.' },
-                        { img: '/src/assets/duan.png', title: 'Đánh giá dự án', desc: 'Các video và bài viết đánh giá giúp bạn có góc nhìn khách quan trước khi đầu tư.' },
-                        { img: '/src/assets/wikibds.png', title: 'Wiki BĐS', desc: 'Cung cấp kiến thức, kinh nghiệm mua bán, đầu tư bất động sản và thông tin hữu ích.' },
+                        { img: bdsBan, title: 'Bất động sản bán', desc: 'Bạn có thể tìm thấy ngôi nhà mơ ước hoặc cơ hội đầu tư hấp dẫn thông qua lượng tin rao lớn, uy tín.' },
+                        { img: bdsThue, title: 'Bất động sản cho thuê', desc: 'Cập nhật thường xuyên các loại hình bất động sản cho thuê như nhà riêng, chung cư, văn phòng.' },
+                        { img: duan, title: 'Đánh giá dự án', desc: 'Các video và bài viết đánh giá giúp bạn có góc nhìn khách quan trước khi đầu tư.' },
+                        { img: wikibds, title: 'Wiki BĐS', desc: 'Cung cấp kiến thức, kinh nghiệm mua bán, đầu tư bất động sản và thông tin hữu ích.' },
                     ].map((item, index) => (
                         <div key={index} className="bg-white rounded-2xl p-6 shadow-sm hover:shadow-xl transition-all duration-300 text-center group">
                             <div className="w-[150px] h-[150px] mx-auto mb-5 flex items-center justify-center bg-blue-50 rounded-xl group-hover:bg-blue-100 transition">

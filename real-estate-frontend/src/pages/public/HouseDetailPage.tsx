@@ -573,14 +573,21 @@ const HouseDetailPage: React.FC = () => {
                                 {isFavoritedHouse(house.id) ? 'Đã yêu thích' : 'Yêu thích'}
                             </button>
 
-                            {/* Nút Đặt lịch hẹn */}
-                            <button
-                                onClick={() => navigate(`/appointment?houseId=${house.id}`)}
-                                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-[#254b86] text-white text-[14px] font-semibold hover:bg-[#1a3660] transition-colors duration-200"
-                            >
-                                <CalendarOutlined className="text-[15px]" />
-                                Đặt Lịch Hẹn
-                            </button>
+                            {/* Nút Đặt lịch hẹn — ẩn nếu nhà đã bán */}
+                            {house.status === PROPERTY_STATUS.SOLD ? (
+                                <div className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-gray-100 text-gray-400 text-[14px] font-semibold border border-gray-200 cursor-not-allowed select-none">
+                                    <CalendarOutlined className="text-[15px]" />
+                                    Nhà đã được bán
+                                </div>
+                            ) : (
+                                <button
+                                    onClick={() => navigate(`/appointment?houseId=${house.id}`)}
+                                    className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-[#254b86] text-white text-[14px] font-semibold hover:bg-[#1a3660] transition-colors duration-200"
+                                >
+                                    <CalendarOutlined className="text-[15px]" />
+                                    Đặt Lịch Hẹn
+                                </button>
+                            )}
                         </div>
                     </div>
                 </div>

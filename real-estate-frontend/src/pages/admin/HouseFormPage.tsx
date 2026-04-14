@@ -18,6 +18,36 @@ interface FileItem {
 
 type FormPrimitive = string | number | null | undefined;
 
+const HOUSE_FORM_FIELDS = [
+    'code',
+    'title',
+    'city',
+    'district',
+    'ward',
+    'street',
+    'houseNumber',
+    'description',
+    'price',
+    'area',
+    'direction',
+    'floors',
+    'bedrooms',
+    'bathrooms',
+    'status',
+    'categoryId',
+    'employeeId',
+] as const;
+
+type HouseFormFieldKey = (typeof HOUSE_FORM_FIELDS)[number];
+
+const DECIMAL_HOUSE_FIELDS = new Set<HouseFormFieldKey>(['area']);
+
+const normalizeDecimalString = (value: string): string => {
+    const trimmed = value.trim();
+    if (!trimmed.includes(',')) return trimmed;
+    return trimmed.replace(/\./g, '').replace(',', '.');
+};
+
 const HouseFormPage: React.FC = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
@@ -25,7 +55,25 @@ const HouseFormPage: React.FC = () => {
     const [categories, setCategories] = useState<PropertyCategory[]>([]);
     const [employees, setEmployees] = useState<Employee[]>([]);
     const [fileList, setFileList] = useState<FileItem[]>([]);
-    const [formData, setFormData] = useState<Record<string, FormPrimitive>>({});
+    const [formData, setFormData] = useState<Record<string, FormPrimitive>>({
+        code: '',
+        title: '',
+        city: '',
+        district: '',
+        ward: '',
+        street: '',
+        houseNumber: '',
+        description: '',
+        price: undefined,
+        area: undefined,
+        direction: '',
+        floors: undefined,
+        bedrooms: undefined,
+        bathrooms: undefined,
+        status: 1,
+        categoryId: undefined,
+        employeeId: undefined,
+    });
     const [errors, setErrors] = useState<Record<string, string>>({});
     const fileInputRef = useRef<HTMLInputElement>(null);
     const isEdit = !!id;
@@ -48,7 +96,26 @@ const HouseFormPage: React.FC = () => {
         try {
             const res = await houseApi.getById(houseId);
             const house = res.data.data || res.data;
-            setFormData(house as Record<string, FormPrimitive>);
+            const mapped: Record<HouseFormFieldKey, FormPrimitive> = {
+                code: house.code || '',
+                title: house.title || '',
+                city: house.city || '',
+                district: house.district || '',
+                ward: house.ward || '',
+                street: house.street || '',
+                houseNumber: house.houseNumber || '',
+                description: house.description || '',
+                price: house.price,
+                area: house.area,
+                direction: house.direction || '',
+                floors: house.floors,
+                bedrooms: house.bedrooms,
+                bathrooms: house.bathrooms,
+                status: house.status ?? 1,
+                categoryId: house.categoryId,
+                employeeId: house.employeeId,
+            };
+            setFormData(mapped);
             if (house.images) {
                 setFileList(
                     house.images.map((img: { id: number; url: string }) => ({
@@ -119,9 +186,13 @@ const HouseFormPage: React.FC = () => {
         setLoading(true);
         try {
             const fd = new FormData();
-            Object.entries(values).forEach(([key, value]) => {
-                if (value !== undefined && value !== null) {
-                    fd.append(key, String(value));
+            HOUSE_FORM_FIELDS.forEach((key) => {
+                const value = values[key];
+                if (value !== undefined && value !== null && value !== '') {
+                    const payloadValue = DECIMAL_HOUSE_FIELDS.has(key)
+                        ? normalizeDecimalString(String(value))
+                        : String(value);
+                    fd.append(key, payloadValue);
                 }
             });
 
@@ -294,12 +365,12 @@ const HouseFormPage: React.FC = () => {
                         <div>
                             <label className={labelClass}>Diện tích (m²)</label>
                             <input
-                                type="number"
+                                type="text"
+                                inputMode="decimal"
                                 className={inputClass}
-                                placeholder="Nhập diện tích"
-                                min={0}
+                                placeholder="Nhập diện tích (vd: 10.5)"
                                 value={formData.area || ''}
-                                onChange={(e) => handleChange('area', e.target.value ? Number(e.target.value) : undefined)}
+                                onChange={(e) => handleChange('area', e.target.value)}
                             />
                         </div>
                         <div>

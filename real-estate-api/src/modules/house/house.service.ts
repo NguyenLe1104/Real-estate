@@ -15,15 +15,21 @@ const HOUSE_LIST_TTL = 600;
 const HOUSE_DETAIL_TTL = 900;
 const HOUSE_SEARCH_TTL = 300;
 
-const houseListKey = (page: number, limit: number, status?: number) =>
-  `houses:list:${page}:${limit}:${status ?? 'all'}`;
+const houseListKey = (
+  page: number,
+  limit: number,
+  status?: number,
+  categoryId?: number,
+) => `houses:list:${page}:${limit}:${status ?? 'all'}:${categoryId ?? 'all'}`;
 const houseDetailKey = (id: number) => `house:${id}`;
 const houseSearchKey = (
   query: string,
   page: number,
   limit: number,
   status?: number,
-) => `houses:search:${query}:${page}:${limit}:${status ?? 'all'}`;
+  categoryId?: number,
+) =>
+  `houses:search:${query}:${page}:${limit}:${status ?? 'all'}:${categoryId ?? 'all'}`;
 
 @Injectable()
 export class HouseService {
@@ -34,10 +40,10 @@ export class HouseService {
     private cloudinaryService: CloudinaryService,
     private redis: RedisService,
     private aiService: AiService,
-  ) {}
+  ) { }
 
-  async findAll(page = 1, limit = 10, status?: number) {
-    const cacheKey = houseListKey(page, limit, status);
+  async findAll(page = 1, limit = 10, status?: number, categoryId?: number) {
+    const cacheKey = houseListKey(page, limit, status, categoryId);
 
     // Try cache first
     const cached = await this.redis.get(cacheKey).catch(() => null);
@@ -48,7 +54,10 @@ export class HouseService {
 
     this.logger.debug(`Cache MISS: ${cacheKey}`);
     const skip = (page - 1) * limit;
-    const where = status !== undefined ? { status } : undefined;
+    const where = {
+      ...(status !== undefined ? { status } : {}),
+      ...(categoryId !== undefined ? { categoryId } : {}),
+    };
 
     const [houses, total] = await Promise.all([
       this.prisma.house.findMany({
@@ -175,7 +184,7 @@ export class HouseService {
     };
 
     // Trigger Qdrant indexing (fire-and-forget)
-    this.aiService.indexOne('house', house.id).catch(() => {});
+    this.aiService.indexOne('house', house.id).catch(() => { });
 
     return result;
   }
@@ -242,11 +251,11 @@ export class HouseService {
     if (files?.length || dto.keepImageIds !== undefined) {
       const keepIds: number[] = dto.keepImageIds
         ? (Array.isArray(dto.keepImageIds)
-            ? dto.keepImageIds
-            : [dto.keepImageIds]
-          )
-            .map(Number)
-            .filter((n) => !isNaN(n))
+          ? dto.keepImageIds
+          : [dto.keepImageIds]
+        )
+          .map(Number)
+          .filter((n) => !isNaN(n))
         : [];
 
       await this.prisma.houseImage.deleteMany({
@@ -274,7 +283,7 @@ export class HouseService {
 
     // Invalidate cache
     await this.invalidateHouseCache();
-    await this.redis.del(houseDetailKey(id)).catch(() => {});
+    await this.redis.del(houseDetailKey(id)).catch(() => { });
 
     const result = {
       message: 'House updated successfully',
@@ -282,7 +291,7 @@ export class HouseService {
     };
 
     // Trigger Qdrant indexing (fire-and-forget)
-    this.aiService.indexOne('house', id).catch(() => {});
+    this.aiService.indexOne('house', id).catch(() => { });
 
     return result;
   }
@@ -303,13 +312,19 @@ export class HouseService {
     await this.prisma.house.delete({ where: { id } });
 
     await this.invalidateHouseCache();
-    await this.redis.del(houseDetailKey(id)).catch(() => {});
+    await this.redis.del(houseDetailKey(id)).catch(() => { });
 
     return { message: 'House deleted successfully' };
   }
 
-  async search(query: string, page = 1, limit = 10, status?: number) {
-    const cacheKey = houseSearchKey(query, page, limit, status);
+  async search(
+    query: string,
+    page = 1,
+    limit = 10,
+    status?: number,
+    categoryId?: number,
+  ) {
+    const cacheKey = houseSearchKey(query, page, limit, status, categoryId);
 
     const cached = await this.redis.get(cacheKey).catch(() => null);
     if (cached) {
@@ -328,6 +343,7 @@ export class HouseService {
         { description: { contains: query } },
       ],
       ...(status !== undefined ? { status } : {}),
+      ...(categoryId !== undefined ? { categoryId } : {}),
     };
 
     const [houses, total] = await Promise.all([

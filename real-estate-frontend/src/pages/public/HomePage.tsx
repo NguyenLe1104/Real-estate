@@ -17,7 +17,7 @@ import tphcm from '@/assets/tphcm.jpg';
 import bdsBan from '@/assets/bdsBan.png';
 import bdsThue from '@/assets/bdsThue.png';
 import duan from '@/assets/duan.png';
-import wikibds from '@/assets/wikibds.png';
+import wikibds from '@/assets/wikiBds.png';
 
 const { Title, Paragraph } = Typography;
 

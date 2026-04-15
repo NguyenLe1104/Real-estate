@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
-import { landApi } from '@/api';
+import { landApi, propertyCategoryApi } from '@/api';
 import { formatCurrency, formatArea } from '@/utils';
-import type { Land } from '@/types';
+import type { Land, PropertyCategory } from '@/types';
 import { DEFAULT_PAGE_SIZE } from '@/constants';
 import { Button, Badge, DataTable, ImageLightbox } from '@/components/ui';
 import Modal from '@/components/ui/Modal';
@@ -23,6 +23,8 @@ const LandManagementPage: React.FC = () => {
     const [page, setPage] = useState(1);
     const [search, setSearch] = useState('');
     const [statusFilter, setStatusFilter] = useState<number>(ACTIVE_STATUS);
+    const [categoryFilter, setCategoryFilter] = useState<string>('');
+    const [categories, setCategories] = useState<PropertyCategory[]>([]);
     const [activeCount, setActiveCount] = useState(0);
     const [soldCount, setSoldCount] = useState(0);
     const [previewOpen, setPreviewOpen] = useState(false);
@@ -33,6 +35,17 @@ const LandManagementPage: React.FC = () => {
     const [deleting, setDeleting] = useState(false);
     const [detailItem, setDetailItem] = useState<Land | null>(null);
 
+    const landCategories = categories.filter((c) => c.categoryType === 'LAND');
+
+    const loadCategories = useCallback(async () => {
+        try {
+            const res = await propertyCategoryApi.getAll();
+            setCategories(res.data.data || res.data);
+        } catch {
+            toast.error('Lỗi tải danh mục');
+        }
+    }, []);
+
     const loadLands = useCallback(async () => {
         setLoading(true);
         try {
@@ -42,10 +55,12 @@ const LandManagementPage: React.FC = () => {
                 status: statusFilter,
             };
             if (search) listParams.search = search;
+            if (categoryFilter) listParams.categoryId = Number(categoryFilter);
 
             const countParams = (status: number): Record<string, unknown> => {
                 const params: Record<string, unknown> = { page: 1, limit: 1, status };
                 if (search) params.search = search;
+                if (categoryFilter) params.categoryId = Number(categoryFilter);
                 return params;
             };
 
@@ -73,7 +88,11 @@ const LandManagementPage: React.FC = () => {
         } finally {
             setLoading(false);
         }
-    }, [page, search, statusFilter]);
+    }, [page, search, statusFilter, categoryFilter]);
+
+    useEffect(() => {
+        loadCategories();
+    }, [loadCategories]);
 
     useEffect(() => {
         loadLands();
@@ -160,9 +179,9 @@ const LandManagementPage: React.FC = () => {
             render: (area: number) => formatArea(area),
         },
         {
-            title: 'Loại đất',
-            dataIndex: 'landType',
-            key: 'landType',
+            title: 'Danh mục',
+            key: 'category',
+            render: (_: unknown, record: Land) => record.category?.name || '—',
         },
         {
             title: 'Trạng thái',
@@ -250,14 +269,31 @@ const LandManagementPage: React.FC = () => {
                         Đã bán ({soldCount})
                     </button>
                 </div>
-                <div className="w-full min-w-0 sm:max-w-[400px]">
-                    <input
-                        type="text"
-                        placeholder="Tìm kiếm..."
-                        className="admin-control admin-filter-input w-full rounded-xl border border-gray-300 bg-white px-3.5 py-2.5 text-sm text-gray-700 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
-                        value={search}
-                        onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-                    />
+                <div className="flex flex-col sm:flex-row gap-3 w-full min-w-0">
+                    <div className="w-full sm:max-w-[220px]">
+                        <select
+                            className="admin-control admin-filter-input h-10 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-[13px] text-gray-700 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+                            value={categoryFilter}
+                            onChange={(e) => {
+                                setCategoryFilter(e.target.value);
+                                setPage(1);
+                            }}
+                        >
+                            <option value="">Tất cả danh mục</option>
+                            {landCategories.map((category) => (
+                                <option key={category.id} value={String(category.id)}>{category.name}</option>
+                            ))}
+                        </select>
+                    </div>
+                    <div className="w-full sm:max-w-[400px]">
+                        <input
+                            type="text"
+                            placeholder="Tìm kiếm..."
+                            className="admin-control admin-filter-input w-full rounded-xl border border-gray-300 bg-white px-3.5 py-2.5 text-sm text-gray-700 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+                            value={search}
+                            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+                        />
+                    </div>
                 </div>
             </div>
 

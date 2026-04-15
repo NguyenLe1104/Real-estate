@@ -16,15 +16,21 @@ const LAND_LIST_TTL = 600; // 10 minutes
 const LAND_DETAIL_TTL = 900; // 15 minutes
 const LAND_SEARCH_TTL = 300; // 5 minutes
 
-const landListKey = (page: number, limit: number, status?: number) =>
-  `lands:list:${page}:${limit}:${status ?? 'all'}`;
+const landListKey = (
+  page: number,
+  limit: number,
+  status?: number,
+  categoryId?: number,
+) => `lands:list:${page}:${limit}:${status ?? 'all'}:${categoryId ?? 'all'}`;
 const landDetailKey = (id: number) => `land:${id}`;
 const landSearchKey = (
   query: string,
   page: number,
   limit: number,
   status?: number,
-) => `lands:search:${query}:${page}:${limit}:${status ?? 'all'}`;
+  categoryId?: number,
+) =>
+  `lands:search:${query}:${page}:${limit}:${status ?? 'all'}:${categoryId ?? 'all'}`;
 
 @Injectable()
 export class LandService {
@@ -35,10 +41,10 @@ export class LandService {
     private cloudinaryService: CloudinaryService,
     private redis: RedisService,
     private aiService: AiService,
-  ) {}
+  ) { }
 
-  async findAll(page = 1, limit = 10, status?: number) {
-    const cacheKey = landListKey(page, limit, status);
+  async findAll(page = 1, limit = 10, status?: number, categoryId?: number) {
+    const cacheKey = landListKey(page, limit, status, categoryId);
 
     // Try cache first
     const cached = await this.redis.get(cacheKey).catch(() => null);
@@ -49,7 +55,10 @@ export class LandService {
 
     this.logger.debug(`Cache MISS: ${cacheKey}`);
     const skip = (page - 1) * limit;
-    const where = status !== undefined ? { status } : undefined;
+    const where = {
+      ...(status !== undefined ? { status } : {}),
+      ...(categoryId !== undefined ? { categoryId } : {}),
+    };
 
     const [lands, total] = await Promise.all([
       this.prisma.land.findMany({
@@ -181,7 +190,7 @@ export class LandService {
     };
 
     // Trigger Qdrant indexing (fire-and-forget)
-    this.aiService.indexOne('land', land.id).catch(() => {});
+    this.aiService.indexOne('land', land.id).catch(() => { });
 
     return result;
   }
@@ -248,11 +257,11 @@ export class LandService {
       // Parse danh sách ID ảnh cần giữ
       const keepIds: number[] = dto.keepImageIds
         ? (Array.isArray(dto.keepImageIds)
-            ? dto.keepImageIds
-            : [dto.keepImageIds]
-          )
-            .map(Number)
-            .filter((n) => !isNaN(n))
+          ? dto.keepImageIds
+          : [dto.keepImageIds]
+        )
+          .map(Number)
+          .filter((n) => !isNaN(n))
         : [];
 
       // Xóa ảnh không nằm trong keepIds
@@ -281,7 +290,7 @@ export class LandService {
 
     // Invalidate cache
     await this.invalidateLandCache();
-    await this.redis.del(landDetailKey(id)).catch(() => {});
+    await this.redis.del(landDetailKey(id)).catch(() => { });
 
     const result = {
       message: 'Land updated successfully',
@@ -289,7 +298,7 @@ export class LandService {
     };
 
     // Trigger Qdrant indexing (fire-and-forget)
-    this.aiService.indexOne('land', id).catch(() => {});
+    this.aiService.indexOne('land', id).catch(() => { });
 
     return result;
   }
@@ -311,13 +320,19 @@ export class LandService {
 
     // Invalidate cache
     await this.invalidateLandCache();
-    await this.redis.del(landDetailKey(id)).catch(() => {});
+    await this.redis.del(landDetailKey(id)).catch(() => { });
 
     return { message: 'Land deleted successfully' };
   }
 
-  async search(query: string, page = 1, limit = 10, status?: number) {
-    const cacheKey = landSearchKey(query, page, limit, status);
+  async search(
+    query: string,
+    page = 1,
+    limit = 10,
+    status?: number,
+    categoryId?: number,
+  ) {
+    const cacheKey = landSearchKey(query, page, limit, status, categoryId);
 
     // Try cache first
     const cached = await this.redis.get(cacheKey).catch(() => null);
@@ -337,6 +352,7 @@ export class LandService {
         { description: { contains: query } },
       ],
       ...(status !== undefined ? { status } : {}),
+      ...(categoryId !== undefined ? { categoryId } : {}),
     };
 
     const [lands, total] = await Promise.all([

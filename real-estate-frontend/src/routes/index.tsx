@@ -75,9 +75,8 @@ const router = createBrowserRouter([
       { path: "lands", element: <LandListPage /> },
       { path: "lands/:id", element: <LandDetailPage /> },
 
-      // Posts
+      // Posts — static routes MUST be declared before dynamic :id routes
       { path: "posts", element: <NewsPage /> },
-      { path: "posts/:id", element: <NewsDetailPage /> },
       {
         path: "posts/new",
         element: (
@@ -94,6 +93,7 @@ const router = createBrowserRouter([
           </ProtectedRoute>
         ),
       },
+      { path: "posts/:id", element: <NewsDetailPage /> },
 
       { path: "about", element: <AboutMe /> },
       { path: "fengshui", element: <FengshuiPage /> },

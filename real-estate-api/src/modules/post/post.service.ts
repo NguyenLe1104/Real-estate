@@ -574,7 +574,7 @@ export class PostService {
 
     const updated = await this.prisma.post.update({
       where: { id },
-      data: { status: 3, approvedAt: new Date() },
+      data: { status: 3 },
     });
 
     const shouldSendEmail = await this.shouldSendStatusEmail(post.userId);

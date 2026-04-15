@@ -22,7 +22,7 @@ import { Multer } from 'multer';
 
 @Controller('lands')
 export class LandController {
-  constructor(private readonly landService: LandService) {}
+  constructor(private readonly landService: LandService) { }
 
   @Get()
   findAll(
@@ -30,11 +30,29 @@ export class LandController {
     @Query('limit') limit = 10,
     @Query('search') search?: string,
     @Query('status') status?: string,
+    @Query('categoryId') categoryId?: string,
   ) {
     const parsedStatus = status ? Number(status) : undefined;
+    const parsedCategoryId =
+      categoryId !== undefined && categoryId !== ''
+        ? Number(categoryId)
+        : undefined;
+
     if (search)
-      return this.landService.search(search, +page, +limit, parsedStatus);
-    return this.landService.findAll(+page, +limit, parsedStatus);
+      return this.landService.search(
+        search,
+        +page,
+        +limit,
+        parsedStatus,
+        parsedCategoryId,
+      );
+
+    return this.landService.findAll(
+      +page,
+      +limit,
+      parsedStatus,
+      parsedCategoryId,
+    );
   }
 
   @Get('search')

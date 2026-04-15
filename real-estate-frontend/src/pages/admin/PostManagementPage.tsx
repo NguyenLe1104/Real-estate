@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import DOMPurify from 'dompurify';
 import { postApi } from '@/api';
@@ -20,12 +20,29 @@ type ApiError = {
     };
 };
 
+type ActiveTab = 'all' | 'pending' | 'approved' | 'rejected' | 'vip';
+
+/** Map tab → status param gửi lên API (undefined = không lọc theo status) */
+const TAB_STATUS: Record<ActiveTab, number | undefined> = {
+    all: undefined,
+    pending: 1,
+    approved: 2,
+    rejected: 3,
+    vip: undefined, // không có filter VIP ở backend → lọc client-side
+};
+
+const isVipPost = (post: Post) => Boolean(post.isVip || post.vipPackageName || post.vipExpiry);
+
 const PostManagementPage: React.FC = () => {
-    const [allPosts, setAllPosts] = useState<Post[]>([]);
+    // Server-side pagination state
+    const [posts, setPosts] = useState<Post[]>([]);
+    const [totalItems, setTotalItems] = useState(0);
     const [loading, setLoading] = useState(false);
-    const [activeTab, setActiveTab] = useState<'all' | 'pending' | 'approved' | 'rejected' | 'vip'>('all');
+    const [activeTab, setActiveTab] = useState<ActiveTab>('all');
     const [search, setSearch] = useState('');
     const [page, setPage] = useState(1);
+
+    // Modal & UI state
     const [modalOpen, setModalOpen] = useState(false);
     const [editingPost, setEditingPost] = useState<Post | null>(null);
     const [previewOpen, setPreviewOpen] = useState(false);
@@ -37,57 +54,84 @@ const PostManagementPage: React.FC = () => {
     const [formRenderKey, setFormRenderKey] = useState('admin-post-form-create');
     const formScrollRef = useRef<HTMLDivElement>(null);
     const [detailItem, setDetailItem] = useState<Post | null>(null);
-    const loadPosts = useCallback(async () => {
+    const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    const loadPosts = useCallback(async (
+        currentPage: number,
+        currentTab: ActiveTab,
+        currentSearch: string,
+    ) => {
         setLoading(true);
         try {
-            const res = await postApi.getAll();
+            const isVipTab = currentTab === 'vip';
+            const statusParam = TAB_STATUS[currentTab];
+
+            const res = await postApi.getAll({
+                page: isVipTab ? 1 : currentPage,
+                // Tab VIP không có server-side filter → tải nhiều để lọc client-side
+                limit: isVipTab ? 200 : DEFAULT_PAGE_SIZE,
+                ...(statusParam !== undefined ? { status: statusParam } : {}),
+                ...(currentSearch.trim() ? { search: currentSearch.trim() } : {}),
+            } as any);
+
             const payload = (res as any)?.data;
-            const maybePosts = payload?.data ?? payload;
-            const posts = Array.isArray(maybePosts)
-                ? maybePosts
-                : Array.isArray(maybePosts?.data)
-                    ? maybePosts.data
-                    : [];
+            const rawPosts: Post[] = Array.isArray(payload?.data) ? payload.data : [];
+            const total: number = payload?.totalItems ?? 0;
 
-            if (!Array.isArray(posts)) {
-                console.warn('Unexpected posts payload:', payload);
+            if (isVipTab) {
+                const vipOnly = rawPosts.filter(isVipPost);
+                setPosts(vipOnly);
+                setTotalItems(vipOnly.length);
+            } else {
+                setPosts(rawPosts);
+                setTotalItems(total);
             }
-
-            setAllPosts(posts);
         } catch (err: any) {
             const status = err?.response?.status;
-            const apiMessage = err?.response?.data?.message;
-            const url = err?.config?.baseURL && err?.config?.url ? `${err.config.baseURL}${err.config.url}` : undefined;
-
-            console.error('Load posts error:', err);
-            toast.error(
-                status
-                    ? `Lỗi tải dữ liệu (HTTP ${status})${url ? `: ${url}` : ''}`
-                    : 'Lỗi tải dữ liệu'
-            );
-            if (apiMessage) {
-                toast.error(Array.isArray(apiMessage) ? apiMessage[0] : apiMessage);
-            }
+            toast.error(status ? `Lỗi tải dữ liệu (HTTP ${status})` : 'Lỗi tải dữ liệu');
         } finally {
             setLoading(false);
         }
     }, []);
 
     useEffect(() => {
-        loadPosts();
+        loadPosts(page, activeTab, search);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [page]); // search & tab thay đổi qua handler riêng
+
+    useEffect(() => {
+        // Load lần đầu
+        loadPosts(1, 'all', '');
     }, [loadPosts]);
 
-    const isVipPost = (post: Post) => Boolean(post.isVip || post.vipPackageName || post.vipExpiry);
+    const handleSearchChange = (value: string) => {
+        setSearch(value);
+        if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+        searchTimerRef.current = setTimeout(() => {
+            setPage(1);
+            loadPosts(1, activeTab, value);
+        }, 400);
+    };
+
+    const handleTabChange = (tab: ActiveTab) => {
+        setActiveTab(tab);
+        setPage(1);
+        setSearch('');
+        loadPosts(1, tab, '');
+    };
+
+    const handlePageChange = (p: number) => {
+        setPage(p);
+        loadPosts(p, activeTab, search);
+    };
 
     const getVipTierLabel = (post: Post): string => {
         if (!isVipPost(post)) return '—';
-
         const level = post.vipPriorityLevel;
         if (level === 0) return 'VIP 0';
         if (level === 1) return 'VIP 1';
         if (level === 2) return 'VIP 2';
         if (level === 3) return 'VIP 3';
-
         const name = String(post.vipPackageName || '').toLowerCase();
         if (!name) return 'VIP';
         if (name.includes('30')) return 'VIP 3';
@@ -97,34 +141,11 @@ const PostManagementPage: React.FC = () => {
         return 'VIP';
     };
 
-    // Tooltip VIP đã được bỏ ở cột "Tiêu đề" (đã có cột "Gói VIP" riêng).
-
-    const filteredByTabAndSearch = useMemo(() => {
-        let result = [...allPosts];
-
-        if (activeTab === 'pending') result = result.filter((p) => p.status === 1);
-        else if (activeTab === 'approved') result = result.filter((p) => p.status === 2);
-        else if (activeTab === 'rejected') result = result.filter((p) => p.status === 3);
-        else if (activeTab === 'vip') result = result.filter((p) => isVipPost(p));
-
-        if (search.trim()) {
-            const keyword = search.toLowerCase().trim();
-            result = result.filter(
-                (p) => p.title?.toLowerCase().includes(keyword) || p.address?.toLowerCase().includes(keyword),
-            );
-        }
-
-        return result;
-    }, [allPosts, activeTab, search]);
-
-    const pagedPosts = useMemo(() => {
-        const start = (page - 1) * DEFAULT_PAGE_SIZE;
-        return filteredByTabAndSearch.slice(start, start + DEFAULT_PAGE_SIZE);
-    }, [filteredByTabAndSearch, page]);
-
     const openModal = (record?: Post) => {
         setEditingPost(record || null);
-        setFormRenderKey(record ? `admin-post-form-edit-${record.id}-${Date.now()}` : `admin-post-form-create-${Date.now()}`);
+        setFormRenderKey(record
+            ? `admin-post-form-edit-${record.id}-${Date.now()}`
+            : `admin-post-form-create-${Date.now()}`);
         setModalOpen(true);
     };
 
@@ -144,7 +165,7 @@ const PostManagementPage: React.FC = () => {
                 await postApi.create(submitData);
                 toast.success('Thêm bài đăng thành công');
             }
-            loadPosts();
+            loadPosts(page, activeTab, search);
             setModalOpen(false);
         } catch (err: unknown) {
             const error = err as ApiError;
@@ -162,7 +183,10 @@ const PostManagementPage: React.FC = () => {
             await postApi.delete(deletePost.id);
             toast.success('Xóa thành công');
             setDeletePost(null);
-            loadPosts();
+            // Nếu xóa hết trang cuối thì lùi trang
+            const newPage = posts.length === 1 && page > 1 ? page - 1 : page;
+            setPage(newPage);
+            loadPosts(newPage, activeTab, search);
         } catch {
             toast.error('Xóa thất bại');
         } finally {
@@ -175,7 +199,7 @@ const PostManagementPage: React.FC = () => {
             if (status === 2) await postApi.approve(id);
             if (status === 3) await postApi.reject(id);
             toast.success('Cập nhật trạng thái thành công');
-            loadPosts();
+            loadPosts(page, activeTab, search);
         } catch {
             toast.error('Thất bại');
         }
@@ -222,11 +246,9 @@ const PostManagementPage: React.FC = () => {
                             .replace(/>/g, '&gt;')
                             .replace(/"/g, '&quot;')
                             .replace(/'/g, '&#39;');
-
                     const html = looksLikeHtml
                         ? raw
                         : `<div>${escapeHtml(raw).replace(/\r?\n/g, '<br />')}</div>`;
-
                     return (
                         <div
                             dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(html) }}
@@ -357,6 +379,14 @@ const PostManagementPage: React.FC = () => {
             : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
         }`;
 
+    const TABS: Array<{ key: ActiveTab; label: string }> = [
+        { key: 'all', label: 'Tất cả' },
+        { key: 'pending', label: 'Chờ duyệt' },
+        { key: 'approved', label: 'Đã duyệt' },
+        { key: 'rejected', label: 'Đã từ chối' },
+        { key: 'vip', label: 'VIP' },
+    ];
+
     return (
         <div>
             <div className="mb-6 flex items-center justify-between">
@@ -366,24 +396,20 @@ const PostManagementPage: React.FC = () => {
                 </Button>
             </div>
 
-            {/* Tab filter */}
+            {/* Tab filter — server-side, hiển thị totalItems ở tab active */}
             <div className="mb-4 flex flex-wrap gap-2">
-                {(
-                    [
-                        { key: 'all', label: 'Tất cả', count: allPosts.length },
-                        { key: 'pending', label: 'Chờ duyệt', count: allPosts.filter((p) => p.status === 1).length },
-                        { key: 'approved', label: 'Đã duyệt', count: allPosts.filter((p) => p.status === 2).length },
-                        { key: 'rejected', label: 'Đã từ chối', count: allPosts.filter((p) => p.status === 3).length },
-                        { key: 'vip', label: 'VIP', count: allPosts.filter((p) => isVipPost(p)).length },
-                    ] as const
-                ).map((tab) => (
+                {TABS.map((tab) => (
                     <button
                         key={tab.key}
                         className={tabButtonClass(activeTab === tab.key)}
-                        onClick={() => { setActiveTab(tab.key); setPage(1); }}
+                        onClick={() => handleTabChange(tab.key)}
                     >
                         {tab.label}
-                        <span className="rounded-full bg-gray-100 px-1.5 py-0.5 text-xs">{tab.count}</span>
+                        {activeTab === tab.key && (
+                            <span className="rounded-full bg-gray-100 px-1.5 py-0.5 text-xs">
+                                {totalItems}
+                            </span>
+                        )}
                     </button>
                 ))}
             </div>
@@ -395,21 +421,21 @@ const PostManagementPage: React.FC = () => {
                     placeholder="Tìm kiếm theo tiêu đề hoặc địa chỉ..."
                     className="w-full rounded-xl border border-gray-300 bg-white px-3.5 py-2.5 text-sm text-gray-700 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
                     value={search}
-                    onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+                    onChange={(e) => handleSearchChange(e.target.value)}
                 />
             </div>
 
             <DataTable
                 rowKey="id"
                 columns={columns}
-                dataSource={pagedPosts}
+                dataSource={posts}
                 loading={loading}
                 onRow={(record) => ({ onClick: () => setDetailItem(record) })}
                 pagination={{
                     current: page,
-                    total: filteredByTabAndSearch.length,
+                    total: totalItems,
                     pageSize: DEFAULT_PAGE_SIZE,
-                    onChange: (p: number) => setPage(p),
+                    onChange: handlePageChange,
                     showTotal: (t: number) => `Tổng ${t} bản ghi`,
                 }}
             />

@@ -21,7 +21,7 @@ import { Roles } from '../auth/decorators/roles.decorator';
 
 @Controller('houses')
 export class HouseController {
-  constructor(private readonly houseService: HouseService) {}
+  constructor(private readonly houseService: HouseService) { }
 
   @Get()
   findAll(
@@ -29,11 +29,29 @@ export class HouseController {
     @Query('limit') limit = 10,
     @Query('search') search?: string,
     @Query('status') status?: string,
+    @Query('categoryId') categoryId?: string,
   ) {
     const parsedStatus = status ? Number(status) : undefined;
+    const parsedCategoryId =
+      categoryId !== undefined && categoryId !== ''
+        ? Number(categoryId)
+        : undefined;
+
     if (search)
-      return this.houseService.search(search, +page, +limit, parsedStatus);
-    return this.houseService.findAll(+page, +limit, parsedStatus);
+      return this.houseService.search(
+        search,
+        +page,
+        +limit,
+        parsedStatus,
+        parsedCategoryId,
+      );
+
+    return this.houseService.findAll(
+      +page,
+      +limit,
+      parsedStatus,
+      parsedCategoryId,
+    );
   }
 
   @Get('search')

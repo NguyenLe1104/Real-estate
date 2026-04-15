@@ -104,7 +104,7 @@ export class AppointmentService implements OnModuleInit, OnModuleDestroy {
     private mailService: MailService, // dùng để lấy HTML template
     private mailProducer: MailProducerService, // dùng để publish lên RabbitMQ
     private autoAssignProducer: AppointmentAutoAssignProducerService,
-  ) {}
+  ) { }
 
   // Tạo timer chạy nền để cập nhật SLA định kỳ mỗi phút.
   onModuleInit() {
@@ -283,7 +283,7 @@ export class AppointmentService implements OnModuleInit, OnModuleDestroy {
   // Tạo baseline SLA cho lịch hẹn mới.
   private getSlaBaseline(now = new Date()) {
     return {
-      slaAssignDeadlineAt: this.addMinutes(now, 5),
+      slaAssignDeadlineAt: this.addMinutes(now, 30),       // Tăng từ 5 → 30 phút để tránh breach ngay lập tức
       slaFirstContactDeadlineAt: this.addMinutes(now, 24 * 60),
       slaStatus: SLA_STATUS.ON_TRACK,
     };
@@ -308,14 +308,14 @@ export class AppointmentService implements OnModuleInit, OnModuleDestroy {
 
     if (!employeeId && slaAssignDeadlineAt) {
       if (now > slaAssignDeadlineAt) return SLA_STATUS.BREACHED;
-      if (slaAssignDeadlineAt.getTime() - now.getTime() <= 120_000)
+      if (slaAssignDeadlineAt.getTime() - now.getTime() <= 600_000)   // AT_RISK khi còn ≤ 10 phút
         return SLA_STATUS.AT_RISK;
       return SLA_STATUS.ON_TRACK;
     }
 
     if (employeeId && !firstContactAt && slaFirstContactDeadlineAt) {
       if (now > slaFirstContactDeadlineAt) return SLA_STATUS.BREACHED;
-      if (slaFirstContactDeadlineAt.getTime() - now.getTime() <= 120_000)
+      if (slaFirstContactDeadlineAt.getTime() - now.getTime() <= 600_000)   // AT_RISK khi còn ≤ 10 phút
         return SLA_STATUS.AT_RISK;
       return SLA_STATUS.ON_TRACK;
     }
@@ -380,6 +380,7 @@ export class AppointmentService implements OnModuleInit, OnModuleDestroy {
     durationMinutes: number,
     city?: string,
     ward?: string,
+    preferredEmployeeId?: number,
   ) {
     const targetCity = this.normalizeText(city);
     const targetWard = this.normalizeText(ward);
@@ -398,23 +399,9 @@ export class AppointmentService implements OnModuleInit, OnModuleDestroy {
       },
     });
 
-    const fallbackEmployees =
-      employees.length > 0
-        ? employees
-        : await this.prisma.employee.findMany({
-            where: { status: 1, isActive: true },
-            select: {
-              id: true,
-              city: true,
-              ward: true,
-              maxAppointmentsPerDay: true,
-              lastAssignedAt: true,
-            },
-          });
-
     const candidates: AutoAssignCandidate[] = [];
 
-    for (const employee of fallbackEmployees) {
+    for (const employee of employees) {
       const [load, hasConflict] = await Promise.all([
         this.getDailyLoad(employee.id, appointmentDate),
         this.hasConflict(
@@ -430,6 +417,9 @@ export class AppointmentService implements OnModuleInit, OnModuleDestroy {
 
       const employeeCity = this.normalizeText(employee.city);
       const employeeWard = this.normalizeText(employee.ward);
+      const isPreferred =
+        typeof preferredEmployeeId === 'number' &&
+        employee.id === preferredEmployeeId;
 
       const locationScore =
         targetWard && employeeWard === targetWard
@@ -443,17 +433,19 @@ export class AppointmentService implements OnModuleInit, OnModuleDestroy {
       );
       const fairnessHours = employee.lastAssignedAt
         ? Math.min(
-            72,
-            (Date.now() - new Date(employee.lastAssignedAt).getTime()) /
-              3_600_000,
-          )
+          72,
+          (Date.now() - new Date(employee.lastAssignedAt).getTime()) /
+          3_600_000,
+        )
         : 72;
       const fairnessScore = fairnessHours / 72;
 
-      const score =
-        0.4 * locationScore + 0.35 * workloadScore + 0.25 * fairnessScore;
+      const score = isPreferred
+        ? 2
+        : 0.4 * locationScore + 0.35 * workloadScore + 0.25 * fairnessScore;
 
       const reasonParts = [
+        ...(isPreferred ? ['nhân viên quản lý bất động sản'] : []),
         targetWard && employeeWard === targetWard
           ? 'cùng phường/xã'
           : targetCity && employeeCity === targetCity
@@ -470,6 +462,15 @@ export class AppointmentService implements OnModuleInit, OnModuleDestroy {
       });
     }
 
+    if (typeof preferredEmployeeId === 'number') {
+      const preferred = candidates.find(
+        (item) => item.employeeId === preferredEmployeeId,
+      );
+      if (preferred) {
+        return [preferred];
+      }
+    }
+
     return candidates.sort((a, b) => b.score - a.score);
   }
 
@@ -480,6 +481,7 @@ export class AppointmentService implements OnModuleInit, OnModuleDestroy {
     durationMinutes: number,
     city?: string,
     district?: string,
+    preferredEmployeeId?: number,
   ) {
     const suggestions: Array<{ at: string; availableEmployees: number }> = [];
 
@@ -494,19 +496,19 @@ export class AppointmentService implements OnModuleInit, OnModuleDestroy {
         endHour: number;
         endMinute: number;
       }> = [
-        {
-          startHour: WORKING_HOURS.morningStartHour,
-          startMinute: WORKING_HOURS.morningStartMinute,
-          endHour: WORKING_HOURS.morningEndHour,
-          endMinute: WORKING_HOURS.morningEndMinute,
-        },
-        {
-          startHour: WORKING_HOURS.afternoonStartHour,
-          startMinute: WORKING_HOURS.afternoonStartMinute,
-          endHour: WORKING_HOURS.afternoonEndHour,
-          endMinute: WORKING_HOURS.afternoonEndMinute,
-        },
-      ];
+          {
+            startHour: WORKING_HOURS.morningStartHour,
+            startMinute: WORKING_HOURS.morningStartMinute,
+            endHour: WORKING_HOURS.morningEndHour,
+            endMinute: WORKING_HOURS.morningEndMinute,
+          },
+          {
+            startHour: WORKING_HOURS.afternoonStartHour,
+            startMinute: WORKING_HOURS.afternoonStartMinute,
+            endHour: WORKING_HOURS.afternoonEndHour,
+            endMinute: WORKING_HOURS.afternoonEndMinute,
+          },
+        ];
 
       for (const window of windows) {
         let slot = this.toClockDate(base, window.startHour, window.startMinute);
@@ -531,6 +533,7 @@ export class AppointmentService implements OnModuleInit, OnModuleDestroy {
             durationMinutes,
             city,
             district,
+            preferredEmployeeId,
           );
           if (candidates.length > 0) {
             suggestions.push({
@@ -558,6 +561,7 @@ export class AppointmentService implements OnModuleInit, OnModuleDestroy {
         durationMinutes,
         city,
         district,
+        preferredEmployeeId,
       );
       suggestions.push({
         at: slot.toISOString(),
@@ -1129,8 +1133,12 @@ export class AppointmentService implements OnModuleInit, OnModuleDestroy {
     const appointment = await this.prisma.appointment.findUnique({
       where: { id },
       include: {
-        house: { select: { city: true, ward: true, district: true } },
-        land: { select: { city: true, ward: true, district: true } },
+        house: {
+          select: { city: true, ward: true, district: true, employeeId: true },
+        },
+        land: {
+          select: { city: true, ward: true, district: true, employeeId: true },
+        },
       },
     });
 
@@ -1156,6 +1164,8 @@ export class AppointmentService implements OnModuleInit, OnModuleDestroy {
       appointment.land?.district ||
       undefined;
     const durationMinutes = appointment.durationMinutes || 60;
+    const preferredEmployeeId =
+      appointment.house?.employeeId || appointment.land?.employeeId || undefined;
     this.assertWorkingSlot(appointment.appointmentDate, durationMinutes);
 
     const candidates = await this.buildAutoAssignCandidates(
@@ -1164,6 +1174,7 @@ export class AppointmentService implements OnModuleInit, OnModuleDestroy {
       durationMinutes,
       city,
       ward,
+      preferredEmployeeId,
     );
 
     if (candidates.length === 0) {
@@ -1173,6 +1184,7 @@ export class AppointmentService implements OnModuleInit, OnModuleDestroy {
         durationMinutes,
         city,
         ward,
+        preferredEmployeeId,
       );
 
       return {
@@ -1239,7 +1251,10 @@ export class AppointmentService implements OnModuleInit, OnModuleDestroy {
     });
 
     return {
-      message: `Đã auto-assign cho nhân viên #${best.employeeId}`,
+      message:
+        preferredEmployeeId && best.employeeId === preferredEmployeeId
+          ? `Đã auto-assign cho nhân viên quản lý #${best.employeeId}`
+          : `Đã auto-assign cho nhân viên #${best.employeeId}`,
       assigned: true,
       reason: best.reason,
       data: assignedAppointment,
@@ -1251,8 +1266,12 @@ export class AppointmentService implements OnModuleInit, OnModuleDestroy {
     const appointment = await this.prisma.appointment.findUnique({
       where: { id },
       include: {
-        house: { select: { city: true, ward: true, district: true } },
-        land: { select: { city: true, ward: true, district: true } },
+        house: {
+          select: { city: true, ward: true, district: true, employeeId: true },
+        },
+        land: {
+          select: { city: true, ward: true, district: true, employeeId: true },
+        },
       },
     });
 
@@ -1267,6 +1286,8 @@ export class AppointmentService implements OnModuleInit, OnModuleDestroy {
       appointment.house?.district ||
       appointment.land?.district ||
       undefined;
+    const preferredEmployeeId =
+      appointment.house?.employeeId || appointment.land?.employeeId || undefined;
 
     return this.suggestAlternativeSlots(
       appointment.id,
@@ -1274,6 +1295,7 @@ export class AppointmentService implements OnModuleInit, OnModuleDestroy {
       appointment.durationMinutes || 60,
       city,
       ward,
+      preferredEmployeeId,
     );
   }
 
@@ -1398,10 +1420,10 @@ export class AppointmentService implements OnModuleInit, OnModuleDestroy {
         durationMinutes,
         entity?.house?.city || entity?.land?.city || undefined,
         entity?.house?.ward ||
-          entity?.land?.ward ||
-          entity?.house?.district ||
-          entity?.land?.district ||
-          undefined,
+        entity?.land?.ward ||
+        entity?.house?.district ||
+        entity?.land?.district ||
+        undefined,
       );
 
       throw new BadRequestException({

@@ -17,6 +17,8 @@ import type { Response } from 'express';
 import { PaymentService } from './payment.service';
 import { CreatePaymentDto, VNPayCallbackDto } from './dto/payment.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
 
 @Controller('payment')
 export class PaymentController {
@@ -67,7 +69,9 @@ export class PaymentController {
     return this.paymentService.getPaymentById(id, req.user.id);
   }
 
-  @UseGuards(JwtAuthGuard)
+  // Chỉ ADMIN mới được gọi simulate để tránh abuse
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
   @Post(':id/simulate-success')
   async simulateSuccess(@Param('id', ParseIntPipe) id: number, @Request() req) {
     return this.paymentService.simulatePaymentSuccess(id, req.user.id);

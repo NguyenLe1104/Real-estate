@@ -54,6 +54,7 @@ import VipPackageManagementPage from "@/pages/admin/VipPackageManagementPage";
 import VipPackageFormPage from "@/pages/admin/VipPackageFormPage";
 
 // Employee pages
+import EmployeeDashboardPage from "@/pages/employee/EmployeeDashboardPage";
 import EmployeeAppointmentPage from "@/pages/employee/EmployeeAppointmentPage";
 import EmployeeCalendarPage from "@/pages/employee/EmployeeCalendarPage";
 
@@ -75,9 +76,8 @@ const router = createBrowserRouter([
       { path: "lands", element: <LandListPage /> },
       { path: "lands/:id", element: <LandDetailPage /> },
 
-      // Posts
+      // Posts — static routes MUST be declared before dynamic :id routes
       { path: "posts", element: <NewsPage /> },
-      { path: "posts/:id", element: <NewsDetailPage /> },
       {
         path: "posts/new",
         element: (
@@ -94,6 +94,7 @@ const router = createBrowserRouter([
           </ProtectedRoute>
         ),
       },
+      { path: "posts/:id", element: <NewsDetailPage /> },
 
       { path: "about", element: <AboutMe /> },
       { path: "fengshui", element: <FengshuiPage /> },
@@ -200,7 +201,15 @@ const router = createBrowserRouter([
       </ProtectedRoute>
     ),
     children: [
-      { index: true, element: <EmployeeAppointmentPage /> },
+      { index: true, element: <EmployeeDashboardPage /> },
+      { path: "dashboard", element: <EmployeeDashboardPage /> },
+      { path: "houses", element: <HouseManagementPage /> },
+      { path: "houses/create", element: <HouseFormPage /> },
+      { path: "houses/:id/edit", element: <HouseFormPage /> },
+      { path: "lands", element: <LandManagementPage /> },
+      { path: "lands/create", element: <LandFormPage /> },
+      { path: "lands/:id/edit", element: <LandFormPage /> },
+      { path: "posts", element: <PostManagementPage /> },
       { path: "appointments", element: <EmployeeAppointmentPage /> },
       { path: "calendar", element: <EmployeeCalendarPage /> },
       { path: "profile", element: <ProfilePage /> },

@@ -43,7 +43,8 @@ const getThumbnail = (images?: PostImage[]) => {
     return [...images].sort((a, b) => a.position - b.position)[0].url;
 };
 
-const formatPrice = (v: number) => {
+const formatPrice = (v: number | null | undefined): string | null => {
+    if (v === null || v === undefined || isNaN(v)) return null;
     if (v >= 1e9) return (v / 1e9).toFixed(1) + " tỷ";
     if (v >= 1e6) return (v / 1e6).toFixed(0) + " triệu";
     return v.toLocaleString("vi-VN") + " đ";
@@ -162,9 +163,11 @@ const NewsDetailPage = () => {
 
                     <h1 className="text-2xl font-bold mt-4">{post.title}</h1>
 
-                    <div className="text-red-500 text-xl font-bold mt-2">
-                        {formatPrice(post.price)}
-                    </div>
+                    {formatPrice(post.price) && (
+                        <div className="text-red-500 text-xl font-bold mt-2">
+                            {formatPrice(post.price)}
+                        </div>
+                    )}
 
                     <div className="text-gray-500 mt-1">
                         📍 {post.address}
@@ -184,8 +187,12 @@ const NewsDetailPage = () => {
                                 <div className="text-gray-500">Diện tích</div>
                                 <div className="font-medium">{post.area} m²</div>
 
-                                <div className="text-gray-500">Giá</div>
-                                <div className="font-medium text-red-600">{formatPrice(post.price)}</div>
+                                {formatPrice(post.price) && (
+                                    <>
+                                        <div className="text-gray-500">Giá</div>
+                                        <div className="font-medium text-red-600">{formatPrice(post.price)}</div>
+                                    </>
+                                )}
 
                                 <div className="text-gray-500">Hướng</div>
                                 <div className="font-medium">

@@ -1,4 +1,4 @@
-import { Body, Controller, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Post, Query, UseGuards, Req } from '@nestjs/common';
 import { AiService } from './ai.service';
 import { ChatDto } from './dto/chat.dto';
 import { IndexDto } from './dto/index.dto';
@@ -19,9 +19,17 @@ export class AiController {
     return this.aiService.indexData(dto.limit ?? 200);
   }
 
+  /**
+   * POST /ai/generate-description
+   * Yêu cầu:
+   *   - Đã đăng nhập (JWT)
+   *   - Tài khoản VIP còn hạn (isVip = true & vipExpiry > now)
+   */
   @Post('generate-description')
   @UseGuards(JwtAuthGuard)
-  generateDescription(@Body() dto: GenerateDescriptionDto) {
-    return this.aiService.generateDescription(dto);
+  generateDescription(@Req() req: any, @Body() dto: GenerateDescriptionDto) {
+    const userId: number = req.user?.id;
+    const roles: string[] = req.user?.roles ?? [];
+    return this.aiService.generateDescription(dto, userId, roles);
   }
 }

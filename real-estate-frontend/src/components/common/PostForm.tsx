@@ -10,6 +10,75 @@ import { PostType, POST_TYPE_GROUPS } from '@/types/post';
 import type { CreatePostDto } from '@/types/post';
 import { useVietnamAddress } from '@/hooks/UseAddressVN';
 
+// ─── Price formatting helpers ─────────────────────────────────────────────────
+
+/** Format a number to Vietnamese dot-separated string: 1000000000 → "1.000.000.000" */
+const formatVND = (val: number | undefined): string => {
+    if (val === undefined || val === null || isNaN(val) || val === 0) return '';
+    return val.toLocaleString('vi-VN');
+};
+
+// ─── PriceInput ───────────────────────────────────────────────────────────────
+
+interface PriceInputProps {
+    value: number | undefined;
+    onChange: (val: number) => void;
+    placeholder?: string;
+    className?: string;
+    hasError?: boolean;
+}
+
+const PriceInput: React.FC<PriceInputProps> = ({
+    value,
+    onChange,
+    placeholder = '0',
+    className = '',
+    hasError = false,
+}) => {
+    const [displayValue, setDisplayValue] = useState<string>(formatVND(value));
+
+    // Sync when external value changes (e.g. initialData load)
+    useEffect(() => {
+        setDisplayValue(formatVND(value));
+    }, [value]);
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const raw = e.target.value.replace(/[^0-9]/g, '');
+        const num = raw ? Number(raw) : 0;
+        // Format with dots for display
+        const formatted = raw ? Number(raw).toLocaleString('vi-VN') : '';
+        setDisplayValue(formatted);
+        onChange(num);
+    };
+
+    const handleBlur = () => {
+        setDisplayValue(formatVND(value));
+    };
+
+    const baseClass = `w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-1 ${
+        hasError
+            ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
+            : 'border-gray-300 focus:border-brand-500 focus:ring-brand-500'
+    }`;
+
+    return (
+        <div className="relative">
+            <input
+                type="text"
+                inputMode="numeric"
+                value={displayValue}
+                onChange={handleChange}
+                onBlur={handleBlur}
+                placeholder={placeholder}
+                className={`${baseClass} pr-14 ${className}`}
+            />
+            <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 select-none text-xs font-medium text-gray-400">
+                VNĐ
+            </span>
+        </div>
+    );
+};
+
 type UploadImage = {
     uid: string;
     name: string;
@@ -169,9 +238,9 @@ const PostForm: React.FC<PostFormProps> = ({
 
         const submitData = new FormData();
 
-        // Add all form fields
+        // Add all form fields (exclude 'images' — only send new file objects below)
         Object.entries(formData).forEach(([key, value]) => {
-            if (key !== 'postType' && value !== undefined && value !== null && value !== '') {
+            if (key !== 'postType' && key !== 'images' && value !== undefined && value !== null && value !== '') {
                 submitData.append(key, String(value));
             }
         });
@@ -236,7 +305,7 @@ const PostForm: React.FC<PostFormProps> = ({
             };
 
             const data = await aiApi.generateDescription(payload);
-            let fullText = data.description || '';
+            const fullText = data.description || '';
 
             // Convert text newlines to HTML breaks for CKEditor, and handle Markdown bold loosely
             let formattedText = fullText.replace(/(?:\r\n|\r|\n)/g, '<br/>');
@@ -247,8 +316,9 @@ const PostForm: React.FC<PostFormProps> = ({
 
             message.success('Tạo mô tả thành công!');
             setIsAiModalOpen(false); // Close modal when finished
-        } catch (error) {
-            message.error('Có lỗi xảy ra khi tạo mô tả, vui lòng thử lại sau.');
+        } catch (error: any) {
+            const backendMsg = error.response?.data?.message || 'Có lỗi xảy ra khi tạo mô tả, vui lòng thử lại sau.';
+            message.error(backendMsg);
             console.error('AI Desc Generator error:', error);
             setIsAiModalOpen(false);
         } finally {
@@ -422,15 +492,13 @@ const PostForm: React.FC<PostFormProps> = ({
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div>
                         <label className="mb-1 block text-sm font-medium text-gray-700">
-                            Giá (VNĐ) <span className="text-red-500">*</span>
+                            Giá <span className="text-red-500">*</span>
                         </label>
-                        <input
-                            type="number"
-                            value={formData.price || ''}
-                            onChange={(e) => handleFieldChange('price', parseFloat(e.target.value) || 0)}
-                            className={inputClass('price')}
-                            placeholder="1000000000"
-                            min="0"
+                        <PriceInput
+                            value={formData.price}
+                            onChange={(val) => handleFieldChange('price', val)}
+                            placeholder="1.000.000.000"
+                            hasError={!!errors.price}
                         />
                         {renderFieldError('price')}
                     </div>
@@ -573,29 +641,25 @@ const PostForm: React.FC<PostFormProps> = ({
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div>
                         <label className="mb-1 block text-sm font-medium text-gray-700">
-                            Giá tối thiểu (VNĐ) <span className="text-red-500">*</span>
+                            Giá tối thiểu <span className="text-red-500">*</span>
                         </label>
-                        <input
-                            type="number"
-                            value={formData.minPrice || ''}
-                            onChange={(e) => handleFieldChange('minPrice', parseFloat(e.target.value) || 0)}
-                            className={inputClass('minPrice')}
-                            placeholder="500000000"
-                            min="0"
+                        <PriceInput
+                            value={formData.minPrice}
+                            onChange={(val) => handleFieldChange('minPrice', val)}
+                            placeholder="500.000.000"
+                            hasError={!!errors.minPrice}
                         />
                         {renderFieldError('minPrice')}
                     </div>
                     <div>
                         <label className="mb-1 block text-sm font-medium text-gray-700">
-                            Giá tối đa (VNĐ) <span className="text-red-500">*</span>
+                            Giá tối đa <span className="text-red-500">*</span>
                         </label>
-                        <input
-                            type="number"
-                            value={formData.maxPrice || ''}
-                            onChange={(e) => handleFieldChange('maxPrice', parseFloat(e.target.value) || 0)}
-                            className={inputClass('maxPrice')}
-                            placeholder="2000000000"
-                            min="0"
+                        <PriceInput
+                            value={formData.maxPrice}
+                            onChange={(val) => handleFieldChange('maxPrice', val)}
+                            placeholder="2.000.000.000"
+                            hasError={!!errors.maxPrice}
                         />
                         {renderFieldError('maxPrice')}
                     </div>

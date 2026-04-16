@@ -7,6 +7,42 @@ import type { PropertyCategory, Employee } from '@/types';
 import Button from '@/components/ui/Button';
 import LoadingOverlay from '@/components/ui/LoadingOverlay';
 
+// ─── Price helpers ──────────────────────────────────────────────────────────────────────
+const fmtVND = (v: number | string | null | undefined): string => {
+    const n = Number(String(v).replace(/[^0-9]/g, ''));
+    return n ? n.toLocaleString('vi-VN') : '';
+};
+
+interface PriceInputProps {
+    value: number | string | null | undefined;
+    onChange: (num: number) => void;
+    placeholder?: string;
+    className?: string;
+}
+const PriceInput: React.FC<PriceInputProps> = ({ value, onChange, placeholder = '1.000.000.000', className = '' }) => {
+    const [display, setDisplay] = useState(fmtVND(value));
+    useEffect(() => { setDisplay(fmtVND(value)); }, [value]);
+    return (
+        <div className="relative">
+            <input
+                type="text"
+                inputMode="numeric"
+                value={display}
+                placeholder={placeholder}
+                className={className}
+                onChange={(e) => {
+                    const raw = e.target.value.replace(/[^0-9]/g, '');
+                    const num = raw ? Number(raw) : 0;
+                    setDisplay(raw ? num.toLocaleString('vi-VN') : '');
+                    onChange(num);
+                }}
+                onBlur={() => setDisplay(fmtVND(value))}
+            />
+            <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-gray-400">VNĐ</span>
+        </div>
+    );
+};
+
 interface FileItem {
     uid: string;
     name: string;
@@ -353,13 +389,11 @@ const HouseFormPage: React.FC = () => {
                             />
                         </div>
                         <div>
-                            <label className={labelClass}>Giá (VNĐ)</label>
-                            <input
-                                type="number"
-                                className={inputClass}
-                                placeholder="Nhập giá"
-                                value={formData.price || ''}
-                                onChange={(e) => handleChange('price', e.target.value ? Number(e.target.value) : undefined)}
+                            <label className={labelClass}>Giá</label>
+                            <PriceInput
+                                value={formData.price as number}
+                                onChange={(num) => handleChange('price', num || undefined)}
+                                className={`${inputClass} pr-12`}
                             />
                         </div>
                         <div>

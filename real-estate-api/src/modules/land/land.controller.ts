@@ -11,6 +11,7 @@ import {
   ParseIntPipe,
   UploadedFiles,
   UseInterceptors,
+  Req,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { FilesInterceptor } from '@nestjs/platform-express';
@@ -62,6 +63,24 @@ export class LandController {
     @Query('limit') limit = 10,
   ) {
     return this.landService.search(query, +page, +limit);
+  }
+
+  @Get('me/assigned')
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles('EMPLOYEE')
+  findMyAssigned(
+    @Req() req: any,
+    @Query('page') page = 1,
+    @Query('limit') limit = 10,
+    @Query('status') status?: string,
+    @Query('categoryId') categoryId?: string,
+  ) {
+    const parsedStatus = status ? Number(status) : undefined;
+    const parsedCategoryId =
+      categoryId !== undefined && categoryId !== ''
+        ? Number(categoryId)
+        : undefined;
+    return this.landService.findMyAssigned(req.user.id, +page, +limit, parsedStatus, parsedCategoryId);
   }
 
   @Get(':id')

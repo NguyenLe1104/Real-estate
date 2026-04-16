@@ -54,6 +54,7 @@ import VipPackageManagementPage from "@/pages/admin/VipPackageManagementPage";
 import VipPackageFormPage from "@/pages/admin/VipPackageFormPage";
 
 // Employee pages
+import EmployeeDashboardPage from "@/pages/employee/EmployeeDashboardPage";
 import EmployeeAppointmentPage from "@/pages/employee/EmployeeAppointmentPage";
 import EmployeeCalendarPage from "@/pages/employee/EmployeeCalendarPage";
 
@@ -130,14 +131,6 @@ const router = createBrowserRouter([
           </ProtectedRoute>
         ),
       },
-      {
-        path: "vip-packages",
-        element: (
-          <ProtectedRoute>
-            <VIPUpgradePage />      
-          </ProtectedRoute>
-        ),
-      },
     ],
   },
 
@@ -208,8 +201,8 @@ const router = createBrowserRouter([
       </ProtectedRoute>
     ),
     children: [
-      { index: true, element: <DashboardPage /> },
-      { path: "dashboard", element: <DashboardPage /> },
+      { index: true, element: <EmployeeDashboardPage /> },
+      { path: "dashboard", element: <EmployeeDashboardPage /> },
       { path: "houses", element: <HouseManagementPage /> },
       { path: "houses/create", element: <HouseFormPage /> },
       { path: "houses/:id/edit", element: <HouseFormPage /> },

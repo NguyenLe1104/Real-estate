@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
-import { customerApi } from '@/api';
+import { customerApi, userApi } from '@/api';
 import { formatDateTime, getApiErrorMessage } from '@/utils';
 import type { Customer } from '@/types';
 import { DEFAULT_PAGE_SIZE } from '@/constants';
@@ -102,10 +102,30 @@ const handleToggleVip = async (userId: number, currentVipStatus: boolean) => {
         )
       );
       setDeleteTarget(null);
+      loadCustomers();
     } catch (err) {
       toast.error(getApiErrorMessage(err, 'Khóa tài khoản thất bại'));
     } finally {
       setDeleting(false);
+    }
+  };
+
+  const handleUnlockAccount = async (customer: Customer) => {
+    if (!customer.user?.id) return;
+    try {
+      await userApi.update(customer.user.id, { status: 1 });
+      toast.success('Đã mở khóa tài khoản thành công');
+
+      setCustomers((prev) =>
+        prev.map((item) =>
+          item.id === customer.id
+            ? { ...item, user: item.user ? { ...item.user, status: 1 } : item.user }
+            : item
+        )
+      );
+      loadCustomers();
+    } catch (err) {
+      toast.error(getApiErrorMessage(err, 'Mở khóa tài khoản thất bại'));
     }
   };
 
@@ -279,24 +299,41 @@ const columns: Column<Customer>[] = [
           )}
         />
 
-        {/* 🗑️ Khóa */}
-        <Button
-          size="sm"
-          variant="danger"
-          iconOnly
-          ariaLabel="Khóa"
-          startIcon={(
-            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round"
-                d="M12 11c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3z" />
-              <path strokeLinecap="round" strokeLinejoin="round"
-                d="M5 20a7 7 0 0114 0" />
-              <path strokeLinecap="round" strokeLinejoin="round"
-                d="M18 6l4 4m0-4l-4 4" />
-            </svg>
-          )}
-          onClick={() => setDeleteTarget(record)}
-        />
+        {/* 🗑️ Khóa / Mở khóa */}
+        {record.user?.status === 1 ? (
+            <Button
+              size="sm"
+              variant="danger"
+              iconOnly
+              ariaLabel="Khóa"
+              startIcon={(
+                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round"
+                    d="M12 11c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3z" />
+                  <path strokeLinecap="round" strokeLinejoin="round"
+                    d="M5 20a7 7 0 0114 0" />
+                  <path strokeLinecap="round" strokeLinejoin="round"
+                    d="M18 6l4 4m0-4l-4 4" />
+                </svg>
+              )}
+              onClick={() => setDeleteTarget(record)}
+            />
+        ) : (
+            <Button
+              size="sm"
+              variant="outline"
+              className="border-green-500 text-green-600 hover:bg-green-50"
+              iconOnly
+              ariaLabel="Mở khóa"
+              startIcon={(
+                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round"
+                    d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
+                </svg>
+              )}
+              onClick={() => handleUnlockAccount(record)}
+            />
+        )}
 
       </div>
     );

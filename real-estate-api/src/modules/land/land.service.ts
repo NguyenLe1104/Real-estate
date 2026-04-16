@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  ForbiddenException,
   Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -87,6 +88,61 @@ export class LandService {
     };
 
     // Set cache
+    await this.redis.set(cacheKey, result, LAND_LIST_TTL).catch(() => {
+      this.logger.warn(`Failed to cache ${cacheKey}`);
+    });
+
+    return result;
+  }
+
+  async findMyAssigned(userId: number, page = 1, limit = 10, status?: number, categoryId?: number) {
+    const employee = await this.prisma.employee.findUnique({ where: { userId } });
+    if (!employee) {
+      throw new ForbiddenException('User is not an employee');
+    }
+
+    const cacheKey = `lands:assigned:${userId}:${page}:${limit}:${status ?? 'all'}:${categoryId ?? 'all'}`;
+
+    const cached = await this.redis.get(cacheKey).catch(() => null);
+    if (cached) {
+      this.logger.debug(`Cache HIT: ${cacheKey}`);
+      return cached;
+    }
+
+    this.logger.debug(`Cache MISS: ${cacheKey}`);
+    const skip = (page - 1) * limit;
+    const where = {
+      employeeId: employee.id,
+      ...(status !== undefined ? { status } : {}),
+      ...(categoryId !== undefined ? { categoryId } : {}),
+    };
+
+    const [lands, total] = await Promise.all([
+      this.prisma.land.findMany({
+        where,
+        skip,
+        take: limit,
+        include: {
+          category: true,
+          images: { select: { id: true, url: true } },
+          employee: {
+            include: {
+              user: { select: { id: true, fullName: true, phone: true } },
+            },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.land.count({ where }),
+    ]);
+
+    const result = {
+      data: lands,
+      currentPage: page,
+      totalPages: Math.ceil(total / limit),
+      totalItems: total,
+    };
+
     await this.redis.set(cacheKey, result, LAND_LIST_TTL).catch(() => {
       this.logger.warn(`Failed to cache ${cacheKey}`);
     });
@@ -387,6 +443,7 @@ export class LandService {
     try {
       await this.redis.delByPattern('lands:list:*');
       await this.redis.delByPattern('lands:search:*');
+      await this.redis.delByPattern('lands:assigned:*');
       this.logger.debug('Land cache invalidated');
     } catch (error) {
       this.logger.warn('Failed to invalidate land cache:', error);

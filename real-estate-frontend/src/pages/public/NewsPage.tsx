@@ -49,7 +49,11 @@ const NewsPage = () => {
       setHasMore(pageNumber < (payload.totalPages || 1));
 
       if (append) {
-        setAllPosts((prev) => [...prev, ...newList]);
+        setAllPosts((prev) => {
+          const existingIds = new Set(prev.map((p) => p.id));
+          const unique = newList.filter((p) => !existingIds.has(p.id));
+          return [...prev, ...unique];
+        });
         setExpanded(true);
       } else {
         setAllPosts(newList);

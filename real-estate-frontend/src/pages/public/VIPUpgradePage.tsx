@@ -10,7 +10,6 @@ import {
 } from '@ant-design/icons';
 import { paymentApi } from '@/api';
 import { useAuthStore } from '@/stores/authStore';
-import { parseVipPackageBenefitLines } from '@/utils/vipPackageFeatures';
 
 type UpgradeMode = 'account' | 'post';
 

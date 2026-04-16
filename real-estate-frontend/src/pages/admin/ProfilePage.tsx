@@ -58,7 +58,7 @@ const ProfilePage: React.FC = () => {
         isVip: !!user.isVip,
         vipExpiry: expiryDate,
       });
-    } catch (error) {
+    } catch {
       toast.error('Lỗi tải thông tin hồ sơ');
     }
   };
@@ -127,7 +127,7 @@ const handleUpgradeAccountVIP = async () => {
     });
     
     window.location.href = '/vip-upgrade?type=account';   // ← Sửa thành vip-upgrade
-  } catch (error) {
+  } catch {
     toast.error('Không thể khởi tạo nâng cấp VIP. Vui lòng thử lại sau.');
   }
 };

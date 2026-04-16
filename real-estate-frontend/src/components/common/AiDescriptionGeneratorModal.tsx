@@ -31,7 +31,7 @@ const AiDescriptionGeneratorModal: React.FC<AiDescriptionGeneratorModalProps> = 
             className="ai-desc-modal"
             zIndex={110000}
             closable={!isGenerating}
-            maskClosable={!isGenerating}
+            mask={{ closable: !isGenerating }}
         >
             <div className="p-4 text-center">
                 <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-tr from-brand-400 to-brand-600 shadow-lg shadow-brand-500/30">

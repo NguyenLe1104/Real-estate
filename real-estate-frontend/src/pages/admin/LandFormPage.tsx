@@ -7,6 +7,42 @@ import type { PropertyCategory, Employee } from '@/types';
 import { Button } from '@/components/ui';
 import LoadingOverlay from '@/components/ui/LoadingOverlay';
 
+// ─── Price helpers ─────────────────────────────────────────────────────────────────────
+const fmtVND = (v: unknown): string => {
+    const n = Number(String(v ?? '').replace(/[^0-9]/g, ''));
+    return n ? n.toLocaleString('vi-VN') : '';
+};
+
+interface PriceInputProps {
+    value: unknown;
+    onChange: (num: number) => void;
+    placeholder?: string;
+    className?: string;
+}
+const PriceInput: React.FC<PriceInputProps> = ({ value, onChange, placeholder = '1.000.000.000', className = '' }) => {
+    const [display, setDisplay] = useState(fmtVND(value));
+    useEffect(() => { setDisplay(fmtVND(value)); }, [value]);
+    return (
+        <div className="relative">
+            <input
+                type="text"
+                inputMode="numeric"
+                value={display}
+                placeholder={placeholder}
+                className={className}
+                onChange={(e) => {
+                    const raw = e.target.value.replace(/[^0-9]/g, '');
+                    const num = raw ? Number(raw) : 0;
+                    setDisplay(raw ? num.toLocaleString('vi-VN') : '');
+                    onChange(num);
+                }}
+                onBlur={() => setDisplay(fmtVND(value))}
+            />
+            <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-gray-400">VNĐ</span>
+        </div>
+    );
+};
+
 interface FileItem {
     uid: string;
     name: string;
@@ -285,8 +321,12 @@ const LandFormPage: React.FC = () => {
                             <input type="text" className={inputClass} value={String(formData.plotNumber || '')} onChange={(e) => setField('plotNumber', e.target.value)} />
                         </div>
                         <div>
-                            <label className={labelClass}>Giá (VNĐ)</label>
-                            <input type="number" className={inputClass} value={String(formData.price || '')} onChange={(e) => setField('price', e.target.value)} />
+                            <label className={labelClass}>Giá</label>
+                            <PriceInput
+                                value={formData.price}
+                                onChange={(num) => setField('price', num || '')}
+                                className={`${inputClass} pr-12`}
+                            />
                         </div>
                         <div>
                             <label className={labelClass}>Diện tích (m²)</label>

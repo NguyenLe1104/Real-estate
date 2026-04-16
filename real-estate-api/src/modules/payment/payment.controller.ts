@@ -62,7 +62,18 @@ export class PaymentController {
     return this.paymentService.getMyPayments(req.user.id, page);
   }
 
-  // 3. DYNAMIC ROUTES (Luôn để cuối)
+  // 3. ADMIN ROUTES
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  @Get('admin/all')
+  async getAllPayments(
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
+  ) {
+    return this.paymentService.getAllPayments(page, limit);
+  }
+
+  // 4. DYNAMIC ROUTES (Luôn để cuối)
   @UseGuards(JwtAuthGuard)
   @Get(':id')
   async getPaymentById(@Param('id', ParseIntPipe) id: number, @Request() req) {

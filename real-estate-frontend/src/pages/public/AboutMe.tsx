@@ -18,7 +18,10 @@ const anhLienHe =
 const slideImages = [banner1, banner2, banner3];
 
 
-function useScrollReveal(threshold = 0.15) {
+function useScrollReveal(threshold = 0.15): {
+  ref: React.RefObject<HTMLDivElement | null>;
+  visible: boolean;
+} {
   const ref = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
 

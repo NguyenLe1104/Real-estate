@@ -296,7 +296,8 @@ const AppointmentManagementPage: React.FC = () => {
             key: 'slaStatus',
             width: 120,
             render: (_, r) => {
-                const sla = r.slaStatus ?? 0;
+                const sla = r.slaStatus;
+                if (sla === undefined || sla === null) return <Badge color="light">N/A</Badge>;
                 const color = sla === 2 ? 'error' : sla === 1 ? 'warning' : 'success';
                 return <Badge color={color}>{SLA_STATUS_LABELS[sla] || 'Đúng hạn'}</Badge>;
             },
@@ -386,22 +387,24 @@ const AppointmentManagementPage: React.FC = () => {
                                 </svg>
                             )}>Sửa</Button>
                         )}
-                        <Button
-                            size="sm"
-                            variant="danger"
-                            iconOnly
-                            ariaLabel="Xóa"
-                            startIcon={(
-                                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                </svg>
-                            )}
-                            onClick={() => {
-                                setDeleteTarget(record);
-                            }}
-                        >
-                            Xóa
-                        </Button>
+                        {!actualUpdated && (
+                            <Button
+                                size="sm"
+                                variant="danger"
+                                iconOnly
+                                ariaLabel="Xóa"
+                                startIcon={(
+                                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                    </svg>
+                                )}
+                                onClick={() => {
+                                    setDeleteTarget(record);
+                                }}
+                            >
+                                Xóa
+                            </Button>
+                        )}
                     </div>
                 );
             },

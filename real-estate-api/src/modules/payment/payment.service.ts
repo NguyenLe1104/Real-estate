@@ -20,6 +20,35 @@ export class PaymentService {
     private mailProducer: MailProducerService,
   ) { }
 
+  private readonly postVipPriceByDuration: Record<number, number> = {
+    3: 10000,
+    7: 19000,
+    15: 39000,
+    30: 69000,
+  };
+
+  private readonly accountVipPriceByDuration: Record<number, number> = {
+    3: 19000,
+    7: 39000,
+    15: 79000,
+    30: 119000,
+  };
+
+  private resolveVipAmount(durationDays: number, paymentType: PaymentType): number {
+    const pricingMap =
+      paymentType === PaymentType.POST_VIP
+        ? this.postVipPriceByDuration
+        : this.accountVipPriceByDuration;
+
+    const amount = pricingMap[durationDays];
+    if (!amount) {
+      throw new BadRequestException(
+        `Không hỗ trợ bảng giá cho gói ${durationDays} ngày`,
+      );
+    }
+    return amount;
+  }
+
   async createPayment(dto: CreatePaymentDto, userId: number, ipAddr: string) {
     const vipPackage = await this.prisma.vipPackage.findUnique({
       where: { id: dto.packageId },
@@ -28,6 +57,11 @@ export class PaymentService {
     if (!vipPackage || vipPackage.status !== 1) {
       throw new NotFoundException('VIP package not found or inactive');
     }
+
+    const resolvedAmount = this.resolveVipAmount(
+      vipPackage.durationDays,
+      dto.paymentType,
+    );
 
     let finalPostId: number | undefined = undefined;
 
@@ -62,7 +96,7 @@ export class PaymentService {
         data: {
           subscriptionId: subscription.id,
           userId: userId,
-          amount: vipPackage.price,
+          amount: resolvedAmount,
           paymentMethod: dto.paymentMethod,
           paymentType: dto.paymentType,
           status: 0,
@@ -76,14 +110,14 @@ export class PaymentService {
       if (dto.paymentMethod === 'vnpay') {
         paymentUrl = this.vnpayService.createPaymentUrl(
           orderId,
-          Number(vipPackage.price),
+          resolvedAmount,
           orderInfo,
           ipAddr,
         );
       } else if (dto.paymentMethod === 'momo') {
         const momoResponse = await this.momoService.createPaymentUrl(
           orderId,
-          Number(vipPackage.price),
+          resolvedAmount,
           orderInfo,
           dto.returnUrl,
         );
@@ -103,7 +137,7 @@ export class PaymentService {
         data: {
           paymentId: payment.id,
           transactionId: orderId,
-          amount: vipPackage.price,
+          amount: resolvedAmount,
           currency: 'VND',
           paymentMethod: dto.paymentMethod,
           status: 'pending',
@@ -116,89 +150,89 @@ export class PaymentService {
           paymentId: updatedPayment.id,
           subscriptionId: subscription.id,
           paymentUrl,
-          amount: vipPackage.price,
+          amount: resolvedAmount,
         },
       };
     });
   }
 
-private async activateSubscription(paymentId: number, subscription: any) {
-  const now = new Date();
-  const duration = subscription.package?.durationDays || 0;
+  private async activateSubscription(paymentId: number, subscription: any) {
+    const now = new Date();
+    const duration = subscription.package?.durationDays || 0;
 
-  await this.prisma.$transaction(async (tx) => {
-    let startDate = new Date();
+    await this.prisma.$transaction(async (tx) => {
+      let startDate = new Date();
 
-    if (subscription.postId) {
-      // ── VIP cho 1 bài viết ──
-      const post = await tx.post.findUnique({
-        where: { id: subscription.postId },
-      });
-      if (post?.isVip && post.vipExpiry && post.vipExpiry > now) {
-        startDate = new Date(post.vipExpiry);
+      if (subscription.postId) {
+        // ── VIP cho 1 bài viết ──
+        const post = await tx.post.findUnique({
+          where: { id: subscription.postId },
+        });
+        if (post?.isVip && post.vipExpiry && post.vipExpiry > now) {
+          startDate = new Date(post.vipExpiry);
+        }
+      } else {
+        // ── VIP cho tài khoản ──
+        const user = await tx.user.findUnique({
+          where: { id: subscription.userId },
+        });
+        if (user?.isVip && user.vipExpiry && user.vipExpiry > now) {
+          startDate = new Date(user.vipExpiry);
+        }
       }
-    } else {
-      // ── VIP cho tài khoản ──
-      const user = await tx.user.findUnique({
-        where: { id: subscription.userId },
+
+      const endDate = new Date(
+        startDate.getTime() + duration * 24 * 60 * 60 * 1000,
+      );
+
+      // Cập nhật Payment & Subscription
+      await tx.payment.update({
+        where: { id: paymentId },
+        data: { status: 1, paidAt: now },
       });
-      if (user?.isVip && user.vipExpiry && user.vipExpiry > now) {
-        startDate = new Date(user.vipExpiry);
+
+      await tx.vipSubscription.update({
+        where: { id: subscription.id },
+        data: { status: 1, startDate: now, endDate: endDate },
+      });
+
+      // ==================== CẬP NHẬT QUYỀN VIP ====================
+      if (subscription.postId) {
+        // Nâng cấp duy nhất 1 bài viết
+        await tx.post.update({
+          where: { id: subscription.postId },
+          data: {
+            isVip: true,
+            vipExpiry: endDate,
+            vipPriorityLevel: subscription.package?.priorityLevel ?? 0,
+            status: 1,
+            postedAt: now,
+          },
+        });
+      } else {
+        // Nâng cấp TÀI KHOẢN VIP → cập nhật user + TẤT CẢ bài viết
+        await tx.user.update({
+          where: { id: subscription.userId },
+          data: {
+            isVip: true,
+            vipExpiry: endDate
+          },
+        });
+
+        // Đây là phần quan trọng nhất: Cập nhật tất cả bài viết của user thành VIP
+        await tx.post.updateMany({
+          where: {
+            userId: subscription.userId
+          },
+          data: {
+            isVip: true,
+            vipExpiry: endDate,
+            vipPriorityLevel: subscription.package?.priorityLevel ?? 0,
+          },
+        });
       }
-    }
-
-    const endDate = new Date(
-      startDate.getTime() + duration * 24 * 60 * 60 * 1000,
-    );
-
-    // Cập nhật Payment & Subscription
-    await tx.payment.update({
-      where: { id: paymentId },
-      data: { status: 1, paidAt: now },
     });
-
-    await tx.vipSubscription.update({
-      where: { id: subscription.id },
-      data: { status: 1, startDate: now, endDate: endDate },
-    });
-
-    // ==================== CẬP NHẬT QUYỀN VIP ====================
-    if (subscription.postId) {
-      // Nâng cấp duy nhất 1 bài viết
-      await tx.post.update({
-        where: { id: subscription.postId },
-        data: {
-          isVip: true,
-          vipExpiry: endDate,
-          vipPriorityLevel: subscription.package?.priorityLevel ?? 0,
-          status: 1,
-          postedAt: now,
-        },
-      });
-    } else {
-      // Nâng cấp TÀI KHOẢN VIP → cập nhật user + TẤT CẢ bài viết
-      await tx.user.update({
-        where: { id: subscription.userId },
-        data: { 
-          isVip: true, 
-          vipExpiry: endDate 
-        },
-      });
-
-      // Đây là phần quan trọng nhất: Cập nhật tất cả bài viết của user thành VIP
-      await tx.post.updateMany({
-        where: { 
-          userId: subscription.userId 
-        },
-        data: {
-          isVip: true,
-          vipExpiry: endDate,
-          vipPriorityLevel: subscription.package?.priorityLevel ?? 0,
-        },
-      });
-    }
-  });
-}
+  }
 
   async handleVNPayCallback(vnp_Params: any) {
     const verification = this.vnpayService.verifyReturnUrl(vnp_Params);
@@ -413,6 +447,33 @@ private async activateSubscription(paymentId: number, subscription: any) {
         take: limit,
       }),
       this.prisma.payment.count({ where: { userId } }),
+    ]);
+
+    return {
+      data: payments,
+      meta: { page, limit, total, totalPages: Math.ceil(total / limit) },
+    };
+  }
+
+  /** Lấy toàn bộ lịch sử thanh toán – chỉ ADMIN */
+  async getAllPayments(page = 1, limit = 10) {
+    const skip = (page - 1) * limit;
+    const [payments, total] = await Promise.all([
+      this.prisma.payment.findMany({
+        include: {
+          user: { select: { id: true, fullName: true, email: true } },
+          subscription: {
+            include: {
+              package: { select: { id: true, name: true } },
+              post: { select: { id: true, title: true } },
+            },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+      }),
+      this.prisma.payment.count(),
     ]);
 
     return {

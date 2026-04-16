@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'react-hot-toast';
-import DOMPurify from 'dompurify';
 import { postApi } from '@/api';
 import { formatCurrency, formatDateTime } from '@/utils';
 import type { Post } from '@/types';
@@ -49,6 +48,7 @@ const PostManagementPage: React.FC = () => {
     const [previewImages, setPreviewImages] = useState<string[]>([]);
     const [previewIndex, setPreviewIndex] = useState(0);
     const [deletePost, setDeletePost] = useState<Post | null>(null);
+    const [rejectPost, setRejectPost] = useState<Post | null>(null);
     const [deleting, setDeleting] = useState(false);
     const [submitting, setSubmitting] = useState(false);
     const [formRenderKey, setFormRenderKey] = useState('admin-post-form-create');
@@ -96,7 +96,6 @@ const PostManagementPage: React.FC = () => {
 
     useEffect(() => {
         loadPosts(page, activeTab, search);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [page]); // search & tab thay đổi qua handler riêng
 
     useEffect(() => {
@@ -197,7 +196,10 @@ const PostManagementPage: React.FC = () => {
     const handleStatusChange = async (id: number, status: number) => {
         try {
             if (status === 2) await postApi.approve(id);
-            if (status === 3) await postApi.reject(id);
+            if (status === 3) {
+                await postApi.reject(id);
+                setRejectPost(null);
+            }
             toast.success('Cập nhật trạng thái thành công');
             loadPosts(page, activeTab, search);
         } catch {
@@ -235,27 +237,22 @@ const PostManagementPage: React.FC = () => {
             title: 'Mô tả',
             key: 'description',
             width: 550,
-            render: (_, r) =>
-                !r.description ? '—' : (() => {
-                    const raw = String(r.description || '');
-                    const looksLikeHtml = /<\/?[a-z][\s\S]*>/i.test(raw);
-                    const escapeHtml = (s: string) =>
-                        s
-                            .replace(/&/g, '&amp;')
-                            .replace(/</g, '&lt;')
-                            .replace(/>/g, '&gt;')
-                            .replace(/"/g, '&quot;')
-                            .replace(/'/g, '&#39;');
-                    const html = looksLikeHtml
-                        ? raw
-                        : `<div>${escapeHtml(raw).replace(/\r?\n/g, '<br />')}</div>`;
-                    return (
-                        <div
-                            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(html) }}
-                            style={{ lineHeight: '1.6', fontSize: '13.5px', whiteSpace: 'normal', wordBreak: 'break-word' }}
-                        />
-                    );
-                })(),
+            render: (_, r) => {
+                if (!r.description) return '—';
+                const plainText = String(r.description)
+                    .replace(/<[^>]*>/g, ' ')
+                    .replace(/\s+/g, ' ')
+                    .trim();
+
+                return (
+                    <span
+                        className="block max-w-[520px] truncate text-sm text-gray-700"
+                        title={plainText}
+                    >
+                        {plainText}
+                    </span>
+                );
+            },
         },
         { title: 'Địa chỉ', dataIndex: 'address', width: 280 },
         { title: 'Giá', key: 'price', width: 160, render: (_, r) => formatCurrency(r.price) },
@@ -300,76 +297,77 @@ const PostManagementPage: React.FC = () => {
             title: 'Hành động',
             width: 180,
             render: (_, record) => (
-  <div
-    className="grid grid-cols-2 gap-2 w-[80px]"
-    onClick={(e) => e.stopPropagation()}
-  >
+                <div
+                    className="grid grid-cols-2 gap-2 w-[80px]"
+                    onClick={(e) => e.stopPropagation()}
+                >
 
-    {/* ✅ Duyệt */}
-    {record.status === 1 && (
-      <Button
-        size="sm"
-        variant="outline"
-        iconOnly
-        ariaLabel="Duyệt"
-        onClick={() => handleStatusChange(record.id, 2)}
-        className="border-green-500 text-green-600 hover:bg-green-50"
-        startIcon={(
-          <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-          </svg>
-        )}
-      />
-    )}
+                    {/* ✅ Duyệt */}
+                    {record.status === 1 && (
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            iconOnly
+                            ariaLabel="Duyệt"
+                            onClick={() => handleStatusChange(record.id, 2)}
+                            className="border-green-500 text-green-600 hover:bg-green-50"
+                            startIcon={(
+                                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                </svg>
+                            )}
+                        />
+                    )}
 
-    {/* ❌ Từ chối */}
-    {record.status === 1 && (
-      <Button
-        size="sm"
-        variant="outline"
-        iconOnly
-        ariaLabel="Từ chối"
-        onClick={() => handleStatusChange(record.id, 3)}
-        className="border-red-500 text-red-600 hover:bg-red-50"
-        startIcon={(
-          <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        )}
-      />
-    )}
+                    {/* ❌ Từ chối */}
+                    {record.status === 1 && (
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            iconOnly
+                            ariaLabel="Từ chối"
+                            onClick={() => setRejectPost(record)}
+                            className="border-red-500 text-red-600 hover:bg-red-50"
+                            startIcon={(
+                                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            )}
+                        />
+                    )}
 
-    {/* ✏️ Sửa */}
-    <Button
-      size="sm"
-      variant="outline"
-      iconOnly
-      ariaLabel="Sửa"
-      onClick={() => openModal(record)}
-      startIcon={(
-        <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-        </svg>
-      )}
-    />
+                    {/* ✏️ Sửa */}
+                    <Button
+                        size="sm"
+                        variant="outline"
+                        iconOnly
+                        ariaLabel="Sửa"
+                        disabled={record.status === 2}
+                        onClick={() => openModal(record)}
+                        startIcon={(
+                            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                        )}
+                    />
 
-    {/* 🗑️ Xóa */}
-    <Button
-      size="sm"
-      variant="outline"
-      iconOnly
-      ariaLabel="Xóa"
-      onClick={() => setDeletePost(record)}
-      className="border-red-500 text-red-600 hover:bg-red-50"
-      startIcon={(
-        <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-        </svg>
-      )}
-    />
+                    {/* 🗑️ Xóa */}
+                    <Button
+                        size="sm"
+                        variant="outline"
+                        iconOnly
+                        ariaLabel="Xóa"
+                        onClick={() => setDeletePost(record)}
+                        className="border-red-500 text-red-600 hover:bg-red-50"
+                        startIcon={(
+                            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                        )}
+                    />
 
-  </div>
-)
+                </div>
+            )
         },
     ];
 
@@ -467,6 +465,29 @@ const PostManagementPage: React.FC = () => {
                 <p className="text-sm text-gray-700">
                     Bạn có chắc muốn xóa bài đăng{' '}
                     <span className="font-semibold text-gray-900">{deletePost?.title}</span>?
+                </p>
+            </Modal>
+
+            {/* Modal từ chối */}
+            <Modal
+                title="Xác nhận từ chối"
+                isOpen={!!rejectPost}
+                onClose={() => setRejectPost(null)}
+                width="max-w-md"
+                footer={(
+                    <>
+                        <Button variant="outline" onClick={() => setRejectPost(null)}>
+                            Hủy
+                        </Button>
+                        <Button variant="danger" onClick={() => rejectPost && handleStatusChange(rejectPost.id, 3)}>
+                            Xác nhận từ chối
+                        </Button>
+                    </>
+                )}
+            >
+                <p className="text-sm text-gray-700">
+                    Bạn có chắc muốn từ chối bài đăng{' '}
+                    <span className="font-semibold text-gray-900">{rejectPost?.title}</span>?
                 </p>
             </Modal>
 

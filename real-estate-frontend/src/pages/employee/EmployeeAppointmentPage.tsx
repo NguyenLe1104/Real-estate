@@ -241,6 +241,8 @@ const EmployeeAppointmentPage: React.FC = () => {
                                 </svg>
                                 Đã cập nhật
                             </span>
+                        ) : record.status !== APPOINTMENT_STATUS.APPROVED ? (
+                             <span className="text-sm text-gray-400 italic">Chưa được duyệt</span>
                         ) : (
                             <Button
                                 size="sm"

@@ -4,6 +4,7 @@ import { toast } from 'react-hot-toast';
 import { landApi, propertyCategoryApi } from '@/api';
 import { formatCurrency, formatArea } from '@/utils';
 import type { Land, PropertyCategory } from '@/types';
+import { useAuthStore } from '@/stores/authStore';
 import { DEFAULT_PAGE_SIZE } from '@/constants';
 import { Button, Badge, DataTable, ImageLightbox } from '@/components/ui';
 import Modal from '@/components/ui/Modal';
@@ -17,6 +18,8 @@ const LandManagementPage: React.FC = () => {
     const SOLD_STATUS = 0;
 
     const navigate = useNavigate();
+    const { hasRole } = useAuthStore();
+    const isEmployee = hasRole('EMPLOYEE');
     const [lands, setLands] = useState<Land[]>([]);
     const [loading, setLoading] = useState(false);
     const [total, setTotal] = useState(0);
@@ -64,10 +67,12 @@ const LandManagementPage: React.FC = () => {
                 return params;
             };
 
+            const fetchMethod = isEmployee ? landApi.getMyLands : landApi.getAll;
+
             const [listRes, activeRes, soldRes] = await Promise.all([
-                landApi.getAll(listParams),
-                landApi.getAll(countParams(ACTIVE_STATUS)),
-                landApi.getAll(countParams(SOLD_STATUS)),
+                fetchMethod(listParams),
+                fetchMethod(countParams(ACTIVE_STATUS)),
+                fetchMethod(countParams(SOLD_STATUS)),
             ]);
 
             const data = listRes.data;

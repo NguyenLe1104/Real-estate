@@ -4,6 +4,7 @@ import { toast } from 'react-hot-toast';
 import { houseApi, propertyCategoryApi } from '@/api';
 import { formatCurrency, formatArea } from '@/utils';
 import type { House, PropertyCategory } from '@/types';
+import { useAuthStore } from '@/stores/authStore';
 import { DEFAULT_PAGE_SIZE } from '@/constants';
 import Button from '@/components/ui/Button';
 import Badge from '@/components/ui/Badge';
@@ -20,6 +21,8 @@ const HouseManagementPage: React.FC = () => {
     const SOLD_STATUS = 0;
 
     const navigate = useNavigate();
+    const { hasRole } = useAuthStore();
+    const isEmployee = hasRole('EMPLOYEE');
     const [houses, setHouses] = useState<House[]>([]);
     const [loading, setLoading] = useState(false);
     const [total, setTotal] = useState(0);
@@ -67,10 +70,12 @@ const HouseManagementPage: React.FC = () => {
                 return params;
             };
 
+            const fetchMethod = isEmployee ? houseApi.getMyHouses : houseApi.getAll;
+
             const [listRes, activeRes, soldRes] = await Promise.all([
-                houseApi.getAll(listParams),
-                houseApi.getAll(countParams(ACTIVE_STATUS)),
-                houseApi.getAll(countParams(SOLD_STATUS)),
+                fetchMethod(listParams),
+                fetchMethod(countParams(ACTIVE_STATUS)),
+                fetchMethod(countParams(SOLD_STATUS)),
             ]);
 
             const data = listRes.data;

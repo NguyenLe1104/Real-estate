@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, ForbiddenException } from '@nestjs/common';
 import axios from 'axios';
 import { PrismaService } from '../../prisma/prisma.service';
 import { RedisService } from '../../common/redis/redis.service';
@@ -2183,7 +2183,33 @@ export class AiService {
 
   async generateDescription(
     dto: GenerateDescriptionDto,
+    userId?: number,
+    roles: string[] = [],
   ): Promise<{ description: string }> {
+    // ADMIN và EMPLOYEE không cần VIP — bypass luôn
+    const isPrivileged = roles.includes('ADMIN') || roles.includes('EMPLOYEE');
+
+    if (!isPrivileged && userId) {
+      // Chỉ CUSTOMER mới cần kiểm tra VIP
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { isVip: true, vipExpiry: true },
+      });
+
+      const isVipActive =
+        user?.isVip === true &&
+        user.vipExpiry !== null &&
+        user.vipExpiry !== undefined &&
+        new Date(user.vipExpiry) > new Date();
+
+      if (!isVipActive) {
+        throw new ForbiddenException(
+          'Tính năng tạo mô tả tự động bằng AI chỉ dành cho tài khoản VIP. Vui lòng nâng cấp tài khoản.',
+        );
+      }
+    }
+
     return this.descriptionGeneratorService.generateDescription(dto);
   }
 }
+

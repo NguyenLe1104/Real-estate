@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  ForbiddenException,
   Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -55,6 +56,61 @@ export class HouseService {
     this.logger.debug(`Cache MISS: ${cacheKey}`);
     const skip = (page - 1) * limit;
     const where = {
+      ...(status !== undefined ? { status } : {}),
+      ...(categoryId !== undefined ? { categoryId } : {}),
+    };
+
+    const [houses, total] = await Promise.all([
+      this.prisma.house.findMany({
+        where,
+        skip,
+        take: limit,
+        include: {
+          category: true,
+          images: { select: { id: true, url: true } },
+          employee: {
+            include: {
+              user: { select: { id: true, fullName: true, phone: true } },
+            },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.house.count({ where }),
+    ]);
+
+    const result = {
+      data: houses,
+      currentPage: page,
+      totalPages: Math.ceil(total / limit),
+      totalItems: total,
+    };
+
+    await this.redis.set(cacheKey, result, HOUSE_LIST_TTL).catch(() => {
+      this.logger.warn(`Failed to cache ${cacheKey}`);
+    });
+
+    return result;
+  }
+
+  async findMyAssigned(userId: number, page = 1, limit = 10, status?: number, categoryId?: number) {
+    const employee = await this.prisma.employee.findUnique({ where: { userId } });
+    if (!employee) {
+      throw new ForbiddenException('User is not an employee');
+    }
+
+    const cacheKey = `houses:assigned:${userId}:${page}:${limit}:${status ?? 'all'}:${categoryId ?? 'all'}`;
+
+    const cached = await this.redis.get(cacheKey).catch(() => null);
+    if (cached) {
+      this.logger.debug(`Cache HIT: ${cacheKey}`);
+      return cached;
+    }
+
+    this.logger.debug(`Cache MISS: ${cacheKey}`);
+    const skip = (page - 1) * limit;
+    const where = {
+      employeeId: employee.id,
       ...(status !== undefined ? { status } : {}),
       ...(categoryId !== undefined ? { categoryId } : {}),
     };
@@ -378,6 +434,7 @@ export class HouseService {
     try {
       await this.redis.delByPattern('houses:list:*');
       await this.redis.delByPattern('houses:search:*');
+      await this.redis.delByPattern('houses:assigned:*');
       this.logger.debug('House cache invalidated');
     } catch (error) {
       this.logger.warn('Failed to invalidate house cache:', error);

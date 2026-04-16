@@ -49,7 +49,7 @@ export class AppointmentController {
 
   // Admin get all (paginated + search)
   @Get()
-  @Roles('ADMIN')
+  @Roles('ADMIN', 'EMPLOYEE')
   findAll(
     @Query('page') page = 1,
     @Query('limit') limit = 10,

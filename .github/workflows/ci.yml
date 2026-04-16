@@ -31,7 +31,7 @@ jobs:
           cache-dependency-path: real-estate-frontend/package-lock.json
 
       - name: Cài đặt dependencies
-        run: npm ci
+        run: npm install
 
       # Tạo file .env cho Vite để build không lỗi thiếu biến
       - name: Tạo .env từ GitHub Secrets

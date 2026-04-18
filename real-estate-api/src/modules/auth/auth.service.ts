@@ -374,37 +374,19 @@ export class AuthService {
 
     if (!user) {
       const hashPass = await bcrypt.hash('google_oauth_user', 10);
-      for (let i = 0; i < 5; i++) {
-        const pseudoPhone = `G${Math.floor(Math.random() * 10 ** 14)
-          .toString()
-          .padStart(14, '0')}`;
-
-        try {
-          user = await this.prisma.user.create({
-            data: {
-              username: email,
-              email,
-              phone: pseudoPhone,
-              password: hashPass,
-              fullName: name || email.split('@')[0],
-              status: 1,
-            },
-          });
-          break;
-        } catch (error) {
-          const isUniquePhoneConflict =
-            error instanceof Prisma.PrismaClientKnownRequestError &&
-            error.code === 'P2002' &&
-            String(error.meta?.target || '').includes('users_phone_key');
-
-          if (!isUniquePhoneConflict || i === 4) {
-            throw error;
-          }
-        }
-      }
-
-      if (!user)
+      try {
+        user = await this.prisma.user.create({
+          data: {
+            username: email,
+            email,
+            password: hashPass,
+            fullName: name || email.split('@')[0],
+            status: 1,
+          },
+        });
+      } catch (error) {
         throw new BadRequestException('Không thể tạo tài khoản Google');
+      }
     }
 
     const customerRole = await this.prisma.role.findUnique({

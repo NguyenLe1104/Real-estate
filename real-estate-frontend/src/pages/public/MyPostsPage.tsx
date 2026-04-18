@@ -12,9 +12,9 @@ const fmtPrice = (price: number | null | undefined) =>
     price ? price.toLocaleString('vi-VN') + ' đ' : null;
 
 const STATUS_CFG: Record<number, { label: string; dot: string; text: string; bg: string }> = {
-    1: { label: 'Chờ duyệt', dot: 'bg-amber-400',  text: 'text-amber-700',  bg: 'bg-amber-50  border-amber-200' },
-    2: { label: 'Đã duyệt',  dot: 'bg-emerald-400', text: 'text-emerald-700', bg: 'bg-emerald-50 border-emerald-200' },
-    3: { label: 'Từ chối',   dot: 'bg-red-400',     text: 'text-red-700',    bg: 'bg-red-50    border-red-200' },
+    1: { label: 'Chờ duyệt', dot: 'bg-amber-400', text: 'text-amber-700', bg: 'bg-amber-50  border-amber-200' },
+    2: { label: 'Đã duyệt', dot: 'bg-emerald-400', text: 'text-emerald-700', bg: 'bg-emerald-50 border-emerald-200' },
+    3: { label: 'Từ chối', dot: 'bg-red-400', text: 'text-red-700', bg: 'bg-red-50    border-red-200' },
 };
 
 // ─── Preview Drawer ───────────────────────────────────────────────────────────
@@ -36,17 +36,15 @@ const PreviewDrawer: React.FC<{ post: any | null; onClose: () => void }> = ({ po
         <>
             {/* Backdrop */}
             <div
-                className={`fixed inset-0 z-40 bg-black/40 backdrop-blur-sm transition-opacity duration-300 ${
-                    post ? 'opacity-100' : 'pointer-events-none opacity-0'
-                }`}
+                className={`fixed inset-0 z-40 bg-black/40 backdrop-blur-sm transition-opacity duration-300 ${post ? 'opacity-100' : 'pointer-events-none opacity-0'
+                    }`}
                 onClick={onClose}
             />
 
             {/* Drawer panel */}
             <div
-                className={`fixed inset-y-0 right-0 z-50 flex w-full max-w-xl flex-col bg-white shadow-2xl transition-transform duration-300 ${
-                    post ? 'translate-x-0' : 'translate-x-full'
-                }`}
+                className={`fixed inset-y-0 right-0 z-50 flex w-full max-w-xl flex-col bg-white shadow-2xl transition-transform duration-300 ${post ? 'translate-x-0' : 'translate-x-full'
+                    }`}
             >
                 {/* Header */}
                 <div className="flex shrink-0 items-center justify-between border-b border-gray-100 px-5 py-4">
@@ -84,7 +82,7 @@ const PreviewDrawer: React.FC<{ post: any | null; onClose: () => void }> = ({ po
                         rel="noopener noreferrer"
                         className="inline-flex items-center gap-1.5 text-sm font-medium text-blue-600 hover:underline"
                     >
-                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
                         Mở trang đầy đủ
                     </a>
                     <button
@@ -123,7 +121,7 @@ const DeleteConfirm: React.FC<ConfirmProps> = ({ isOpen, onConfirm, onCancel, lo
                 <div className="flex justify-end gap-2.5">
                     <button onClick={onCancel} disabled={loading} className="rounded-xl border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50">Huỷ</button>
                     <button onClick={onConfirm} disabled={loading} className="inline-flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60">
-                        {loading && <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/></svg>}
+                        {loading && <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" /></svg>}
                         Xoá
                     </button>
                 </div>
@@ -150,7 +148,7 @@ const VipModal: React.FC<VipModalProps> = ({ post, onClose, onUpgradePost, onUpg
                 <div className="mb-4 flex items-center gap-3">
                     <div className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-100">
                         <svg className="h-5 w-5 text-amber-600" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M2.5 19L5 10l4.5 4 2.5-6 2.5 6L19 10l2.5 9H2.5z"/>
+                            <path d="M2.5 19L5 10l4.5 4 2.5-6 2.5 6L19 10l2.5 9H2.5z" />
                         </svg>
                     </div>
                     <div>
@@ -165,7 +163,7 @@ const VipModal: React.FC<VipModalProps> = ({ post, onClose, onUpgradePost, onUpg
                     <ul className="space-y-1.5 text-sm text-amber-700">
                         {['Ưu tiên hiển thị trên trang tìm kiếm', 'Xếp hạng cao hơn bài thường', 'Tiếp cận nhiều khách hàng tiềm năng hơn'].map((b) => (
                             <li key={b} className="flex items-center gap-2">
-                                <svg className="h-4 w-4 shrink-0 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>
+                                <svg className="h-4 w-4 shrink-0 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
                                 {b}
                             </li>
                         ))}
@@ -212,7 +210,7 @@ const PostCard: React.FC<PostCardProps> = ({ post, onEdit, onDelete, onVipUpgrad
             {/* VIP badge */}
             {post.isVip && (
                 <span className="absolute right-3 top-3 flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-700">
-                    <svg className="h-3 w-3" viewBox="0 0 24 24" fill="currentColor"><path d="M2.5 19L5 10l4.5 4 2.5-6 2.5 6L19 10l2.5 9H2.5z"/></svg>
+                    <svg className="h-3 w-3" viewBox="0 0 24 24" fill="currentColor"><path d="M2.5 19L5 10l4.5 4 2.5-6 2.5 6L19 10l2.5 9H2.5z" /></svg>
                     VIP
                 </span>
             )}
@@ -223,7 +221,7 @@ const PostCard: React.FC<PostCardProps> = ({ post, onEdit, onDelete, onVipUpgrad
                     <img src={thumb} alt="thumb" className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" />
                 ) : (
                     <div className="flex h-full w-full items-center justify-center">
-                        <svg className="h-8 w-8 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                        <svg className="h-8 w-8 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
                     </div>
                 )}
             </div>
@@ -258,21 +256,21 @@ const PostCard: React.FC<PostCardProps> = ({ post, onEdit, onDelete, onVipUpgrad
                     title="Xem trước"
                     className="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 text-gray-500 transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-600"
                 >
-                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
                 </button>
                 {/* Edit */}
                 <button onClick={onEdit} title="Chỉnh sửa" className="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 text-gray-500 transition hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-600">
-                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                 </button>
                 {/* VIP upgrade */}
                 {!post.isVip && (
                     <button onClick={onVipUpgrade} title="Nâng lên VIP" className="flex h-8 w-8 items-center justify-center rounded-lg border border-amber-200 text-amber-500 transition hover:bg-amber-50 hover:text-amber-600">
-                        <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M2.5 19L5 10l4.5 4 2.5-6 2.5 6L19 10l2.5 9H2.5z"/></svg>
+                        <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M2.5 19L5 10l4.5 4 2.5-6 2.5 6L19 10l2.5 9H2.5z" /></svg>
                     </button>
                 )}
                 {/* Delete */}
                 <button onClick={onDelete} title="Xoá" className="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 text-gray-500 transition hover:border-red-300 hover:bg-red-50 hover:text-red-600">
-                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                 </button>
             </div>
         </div>
@@ -297,14 +295,14 @@ const Skeleton = () => (
 const EmptyState = ({ onNew }: { onNew: () => void }) => (
     <div className="flex flex-col items-center gap-4 py-20 text-center">
         <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gray-100">
-            <svg className="h-8 w-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/></svg>
+            <svg className="h-8 w-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>
         </div>
         <div>
             <p className="font-semibold text-gray-700">Bạn chưa có bài đăng nào</p>
             <p className="mt-1 text-sm text-gray-400">Hãy tạo bài đăng đầu tiên để tiếp cận khách hàng!</p>
         </div>
         <button onClick={onNew} className="mt-1 inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 transition">
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4"/></svg>
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>
             Đăng bài mới
         </button>
     </div>
@@ -315,22 +313,22 @@ const EmptyState = ({ onNew }: { onNew: () => void }) => (
 const PAGE_SIZE = 8;
 
 const MyPostsPage: React.FC = () => {
-    const navigate  = useNavigate();
-    const { user }  = useAuthStore();
+    const navigate = useNavigate();
+    const { user } = useAuthStore();
 
-    const [loading, setLoading]               = useState(true);
-    const [posts, setPosts]                   = useState<any[]>([]);
-    const [page, setPage]                     = useState(1);
-    const [previewPost, setPreviewPost]       = useState<any | null>(null);
-    const [vipModalPost, setVipModalPost]     = useState<any | null>(null);
-    const [deleteTarget, setDeleteTarget]     = useState<any | null>(null);
-    const [deleting, setDeleting]             = useState(false);
+    const [loading, setLoading] = useState(true);
+    const [posts, setPosts] = useState<any[]>([]);
+    const [page, setPage] = useState(1);
+    const [previewPost, setPreviewPost] = useState<any | null>(null);
+    const [vipModalPost, setVipModalPost] = useState<any | null>(null);
+    const [deleteTarget, setDeleteTarget] = useState<any | null>(null);
+    const [deleting, setDeleting] = useState(false);
 
     // ── Filter state ────────────────────────────────────────────────────────
-    const [search, setSearch]         = useState('');
-    const [statusFilter, setStatus]   = useState<number | 'all'>('all');
-    const [typeFilter, setType]       = useState<string>('all');
-    const [vipOnly, setVipOnly]       = useState(false);
+    const [search, setSearch] = useState('');
+    const [statusFilter, setStatus] = useState<number | 'all'>('all');
+    const [typeFilter, setType] = useState<string>('all');
+    const [vipOnly, setVipOnly] = useState(false);
 
     // Unique post types from data
     const postTypes = useMemo(
@@ -376,22 +374,22 @@ const MyPostsPage: React.FC = () => {
         }
     };
 
-    const vipCount  = posts.filter((p) => p.isVip).length;
+    const vipCount = posts.filter((p) => p.isVip).length;
 
     // ── Filtered + paged ────────────────────────────────────────────────────
     const filteredPosts = useMemo(() => {
         let result = [...posts];
         if (statusFilter !== 'all') result = result.filter((p) => p.status === statusFilter);
-        if (typeFilter   !== 'all') result = result.filter((p) => p.postType === typeFilter);
-        if (vipOnly)                result = result.filter((p) => p.isVip);
-        if (search.trim())          result = result.filter((p) =>
+        if (typeFilter !== 'all') result = result.filter((p) => p.postType === typeFilter);
+        if (vipOnly) result = result.filter((p) => p.isVip);
+        if (search.trim()) result = result.filter((p) =>
             p.title?.toLowerCase().includes(search.toLowerCase())
         );
         return result;
     }, [posts, statusFilter, typeFilter, vipOnly, search]);
 
     const totalPage = Math.ceil(filteredPosts.length / PAGE_SIZE);
-    const paged     = filteredPosts.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+    const paged = filteredPosts.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
     // Reset page when filters change
     useEffect(() => { setPage(1); }, [search, statusFilter, typeFilter, vipOnly]);
@@ -412,7 +410,7 @@ const MyPostsPage: React.FC = () => {
                             onClick={() => navigate('/vip-upgrade?type=account')}
                             className="inline-flex items-center gap-1.5 rounded-xl border border-amber-300 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-700 transition hover:bg-amber-100"
                         >
-                            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M2.5 19L5 10l4.5 4 2.5-6 2.5 6L19 10l2.5 9H2.5z"/></svg>
+                            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M2.5 19L5 10l4.5 4 2.5-6 2.5 6L19 10l2.5 9H2.5z" /></svg>
                             {user?.isVip ? 'Gia hạn VIP' : 'Nâng cấp VIP'}
                         </button>
                         {/* New post button */}
@@ -420,7 +418,7 @@ const MyPostsPage: React.FC = () => {
                             onClick={() => navigate('/posts/new')}
                             className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-blue-200 transition hover:bg-blue-700 active:scale-95"
                         >
-                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4"/></svg>
+                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>
                             Đăng bài mới
                         </button>
                     </div>
@@ -429,20 +427,20 @@ const MyPostsPage: React.FC = () => {
                 {/* ── VIP Banner ──────────────────────────────── */}
                 {user?.isVip ? (
                     <div className="mb-5 flex items-center gap-3 rounded-xl border border-amber-200 bg-gradient-to-r from-amber-50 to-yellow-50 px-4 py-3">
-                        <svg className="h-5 w-5 shrink-0 text-amber-500" viewBox="0 0 24 24" fill="currentColor"><path d="M2.5 19L5 10l4.5 4 2.5-6 2.5 6L19 10l2.5 9H2.5z"/></svg>
+                        <svg className="h-5 w-5 shrink-0 text-amber-500" viewBox="0 0 24 24" fill="currentColor"><path d="M2.5 19L5 10l4.5 4 2.5-6 2.5 6L19 10l2.5 9H2.5z" /></svg>
                         <span className="text-sm font-medium text-amber-800">Tài khoản VIP — {posts.length} bài đăng của bạn được ưu tiên hiển thị.</span>
                     </div>
                 ) : vipCount > 0 ? (
                     <div className="mb-5 flex items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
                         <div className="flex items-center gap-2 text-sm text-amber-800">
-                            <svg className="h-4 w-4 shrink-0 text-amber-500" viewBox="0 0 24 24" fill="currentColor"><path d="M2.5 19L5 10l4.5 4 2.5-6 2.5 6L19 10l2.5 9H2.5z"/></svg>
+                            <svg className="h-4 w-4 shrink-0 text-amber-500" viewBox="0 0 24 24" fill="currentColor"><path d="M2.5 19L5 10l4.5 4 2.5-6 2.5 6L19 10l2.5 9H2.5z" /></svg>
                             Bạn có <strong>{vipCount}</strong> bài VIP. Nâng cấp tài khoản để toàn bộ bài được hưởng VIP.
                         </div>
                         <button onClick={() => navigate('/vip-upgrade?type=account')} className="shrink-0 rounded-lg border border-amber-400 bg-white px-3 py-1.5 text-xs font-semibold text-amber-700 hover:bg-amber-50">Nâng cấp ngay</button>
                     </div>
                 ) : (
                     <div className="mb-5 flex items-start gap-2 rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-700">
-                        <svg className="mt-0.5 h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        <svg className="mt-0.5 h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                         Nâng cấp từng bài hoặc toàn bộ tài khoản lên VIP để ưu tiên hiển thị và tiếp cận nhiều khách hơn.
                     </div>
                 )}
@@ -455,7 +453,7 @@ const MyPostsPage: React.FC = () => {
                         {/* Search */}
                         <div className="relative min-w-0 flex-1">
                             <svg className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
                             </svg>
                             <input
                                 type="text"
@@ -466,7 +464,7 @@ const MyPostsPage: React.FC = () => {
                             />
                             {search && (
                                 <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-                                    <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                                    <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
                                 </button>
                             )}
                         </div>
@@ -488,13 +486,12 @@ const MyPostsPage: React.FC = () => {
                         {/* VIP toggle */}
                         <button
                             onClick={() => setVipOnly((v) => !v)}
-                            className={`inline-flex items-center gap-1.5 rounded-xl border px-3 py-2.5 text-sm font-medium transition ${
-                                vipOnly
+                            className={`inline-flex items-center gap-1.5 rounded-xl border px-3 py-2.5 text-sm font-medium transition ${vipOnly
                                     ? 'border-amber-400 bg-amber-50 text-amber-700'
                                     : 'border-gray-200 bg-gray-50 text-gray-600 hover:bg-gray-100'
-                            }`}
+                                }`}
                         >
-                            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M2.5 19L5 10l4.5 4 2.5-6 2.5 6L19 10l2.5 9H2.5z"/></svg>
+                            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M2.5 19L5 10l4.5 4 2.5-6 2.5 6L19 10l2.5 9H2.5z" /></svg>
                             VIP
                         </button>
                     </div>
@@ -505,8 +502,8 @@ const MyPostsPage: React.FC = () => {
                             [
                                 { key: 'all', label: 'Tất cả', count: posts.length },
                                 { key: 1, label: 'Chờ duyệt', count: posts.filter((p) => p.status === 1).length },
-                                { key: 2, label: 'Đã duyệt',  count: posts.filter((p) => p.status === 2).length },
-                                { key: 3, label: 'Từ chối',   count: posts.filter((p) => p.status === 3).length },
+                                { key: 2, label: 'Đã duyệt', count: posts.filter((p) => p.status === 2).length },
+                                { key: 3, label: 'Từ chối', count: posts.filter((p) => p.status === 3).length },
                             ] as const
                         ).map((tab) => {
                             const active = statusFilter === tab.key;
@@ -515,17 +512,15 @@ const MyPostsPage: React.FC = () => {
                                 <button
                                     key={String(tab.key)}
                                     onClick={() => setStatus(tab.key as any)}
-                                    className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold transition ${
-                                        active
+                                    className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold transition ${active
                                             ? 'border-blue-500 bg-blue-600 text-white shadow-sm shadow-blue-200'
                                             : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:bg-gray-50'
-                                    }`}
+                                        }`}
                                 >
                                     {tab.key !== 'all' && <span className={`h-1.5 w-1.5 rounded-full ${active ? 'bg-white/80' : dotCls}`} />}
                                     {tab.label}
-                                    <span className={`rounded-full px-1.5 py-0.5 text-[10px] leading-none ${
-                                        active ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500'
-                                    }`}>{tab.count}</span>
+                                    <span className={`rounded-full px-1.5 py-0.5 text-[10px] leading-none ${active ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500'
+                                        }`}>{tab.count}</span>
                                 </button>
                             );
                         })}
@@ -540,7 +535,7 @@ const MyPostsPage: React.FC = () => {
                                     onClick={clearFilters}
                                     className="inline-flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-2 py-1 text-xs font-medium text-gray-500 hover:bg-gray-50 hover:text-gray-700 transition"
                                 >
-                                    <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                                    <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
                                     Xoá lọc
                                 </button>
                             )}
@@ -557,7 +552,7 @@ const MyPostsPage: React.FC = () => {
                     hasActiveFilter ? (
                         <div className="flex flex-col items-center gap-3 py-16 text-center">
                             <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-100">
-                                <svg className="h-7 w-7 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/></svg>
+                                <svg className="h-7 w-7 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" /></svg>
                             </div>
                             <div>
                                 <p className="font-semibold text-gray-700">Không tìm thấy bài phù hợp</p>
@@ -588,7 +583,7 @@ const MyPostsPage: React.FC = () => {
                             <div className="mt-6 flex items-center justify-center gap-1.5">
                                 <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}
                                     className="flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 text-gray-500 transition hover:bg-gray-50 disabled:opacity-40">
-                                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7"/></svg>
+                                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>
                                 </button>
                                 {Array.from({ length: totalPage }, (_, i) => i + 1).map((p) => (
                                     <button key={p} onClick={() => setPage(p)}
@@ -598,7 +593,7 @@ const MyPostsPage: React.FC = () => {
                                 ))}
                                 <button onClick={() => setPage((p) => Math.min(totalPage, p + 1))} disabled={page === totalPage}
                                     className="flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 text-gray-500 transition hover:bg-gray-50 disabled:opacity-40">
-                                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/></svg>
+                                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
                                 </button>
                             </div>
                         )}

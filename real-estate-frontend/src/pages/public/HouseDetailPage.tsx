@@ -156,7 +156,6 @@ interface GalleryProps {
 
 const Gallery: React.FC<GalleryProps> = ({ images, title }) => {
     const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
-
     const openLightbox = (index: number) => setLightboxIndex(index);
     const closeLightbox = () => setLightboxIndex(null);
 

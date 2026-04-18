@@ -22,7 +22,7 @@ import { Roles } from '../auth/decorators/roles.decorator';
 
 @Controller('payment')
 export class PaymentController {
-  constructor(private paymentService: PaymentService) {}
+  constructor(private paymentService: PaymentService) { }
 
   // 1. GATEWAY CALLBACKS & IPN (VNPay gọi về)
   @Get('vnpay/callback')
@@ -69,8 +69,13 @@ export class PaymentController {
   async getAllPayments(
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
+    @Query('search') search?: string,
+    @Query('method') method?: string,
+    @Query('status') status?: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
   ) {
-    return this.paymentService.getAllPayments(page, limit);
+    return this.paymentService.getAllPayments(page, limit, search, method, status, startDate, endDate);
   }
 
   // 4. DYNAMIC ROUTES (Luôn để cuối)
@@ -90,6 +95,6 @@ export class PaymentController {
   @Put(':id/upgrade-vip')
   @UseGuards(JwtAuthGuard)
   upgradeToVip(@Param('id') id: string, @Request() req: any) {
-     return this.paymentService.initiatePostVipUpgrade(Number(id), req.user.id);
+    return this.paymentService.initiatePostVipUpgrade(Number(id), req.user.id);
   }
 }

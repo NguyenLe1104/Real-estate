@@ -4,3 +4,6 @@ real-estate-frontend/.env
 node_modules
 .claude/
 
+# Python cache
+__pycache__/
+*.pyc

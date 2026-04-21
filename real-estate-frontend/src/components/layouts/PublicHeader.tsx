@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Dropdown, type MenuProps } from 'antd';
 import toast from 'react-hot-toast';
@@ -13,6 +13,7 @@ const navigationItems = [
   { label: "Đăng Bài Viết", href: "/posts/new" },
   { label: "Về Chúng Tôi", href: "/about" },
   { label: "Phong Thủy", href: "/fengshui" },
+  { label: "Định giá AI", href: "/dinh-gia" },
 ];
 
 const PublicHeader: React.FC = () => {

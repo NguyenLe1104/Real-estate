@@ -22,7 +22,8 @@ const landListKey = (
   limit: number,
   status?: number,
   categoryId?: number,
-) => `lands:list:${page}:${limit}:${status ?? 'all'}:${categoryId ?? 'all'}`;
+  employeeId?: number,
+) => `lands:list:${page}:${limit}:${status ?? 'all'}:${categoryId ?? 'all'}:${employeeId ?? 'all'}`;
 const landDetailKey = (id: number) => `land:${id}`;
 const landSearchKey = (
   query: string,
@@ -30,8 +31,9 @@ const landSearchKey = (
   limit: number,
   status?: number,
   categoryId?: number,
+  employeeId?: number,
 ) =>
-  `lands:search:${query}:${page}:${limit}:${status ?? 'all'}:${categoryId ?? 'all'}`;
+  `lands:search:${query}:${page}:${limit}:${status ?? 'all'}:${categoryId ?? 'all'}:${employeeId ?? 'all'}`;
 
 @Injectable()
 export class LandService {
@@ -44,8 +46,8 @@ export class LandService {
     private aiService: AiService,
   ) { }
 
-  async findAll(page = 1, limit = 10, status?: number, categoryId?: number) {
-    const cacheKey = landListKey(page, limit, status, categoryId);
+  async findAll(page = 1, limit = 10, status?: number, categoryId?: number, employeeId?: number) {
+    const cacheKey = landListKey(page, limit, status, categoryId, employeeId);
 
     // Try cache first
     const cached = await this.redis.get(cacheKey).catch(() => null);
@@ -59,6 +61,7 @@ export class LandService {
     const where = {
       ...(status !== undefined ? { status } : {}),
       ...(categoryId !== undefined ? { categoryId } : {}),
+      ...(employeeId !== undefined ? { employeeId } : {}),
     };
 
     const [lands, total] = await Promise.all([
@@ -387,8 +390,9 @@ export class LandService {
     limit = 10,
     status?: number,
     categoryId?: number,
+    employeeId?: number,
   ) {
-    const cacheKey = landSearchKey(query, page, limit, status, categoryId);
+    const cacheKey = landSearchKey(query, page, limit, status, categoryId, employeeId);
 
     // Try cache first
     const cached = await this.redis.get(cacheKey).catch(() => null);
@@ -409,6 +413,7 @@ export class LandService {
       ],
       ...(status !== undefined ? { status } : {}),
       ...(categoryId !== undefined ? { categoryId } : {}),
+      ...(employeeId !== undefined ? { employeeId } : {}),
     };
 
     const [lands, total] = await Promise.all([
@@ -419,6 +424,11 @@ export class LandService {
         include: {
           category: true,
           images: { select: { url: true } },
+          employee: {
+            include: {
+              user: { select: { id: true, fullName: true, phone: true } },
+            },
+          },
         },
       }),
       this.prisma.land.count({ where }),

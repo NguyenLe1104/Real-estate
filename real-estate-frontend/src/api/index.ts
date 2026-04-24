@@ -11,3 +11,5 @@ export { aiApi } from './ai';
 export { recommendationApi } from './recommendation';
 export { vipPackageApi } from './vip-package';
 export { fengshuiApi } from './fengshui';
+export { notificationApi } from './notification';
+export type { Notification, NotificationsResponse } from './notification';

@@ -1,10 +1,11 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Dropdown, type MenuProps } from 'antd';
-import { UserOutlined, FileTextOutlined, HeartOutlined, CalendarOutlined, CrownOutlined, LogoutOutlined, BellOutlined } from '@ant-design/icons';
+import { UserOutlined, FileTextOutlined, HeartOutlined, CalendarOutlined, CrownOutlined, LogoutOutlined } from '@ant-design/icons';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '@/stores/authStore';
 import group from "../../assets/logo.png";
+import NotificationDropdown from '@/components/common/NotificationDropdown';
 
 const navigationItems = [
   { label: "Trang Chủ", href: "/" },
@@ -142,11 +143,8 @@ const PublicHeader: React.FC = () => {
                 <HeartOutlined className="text-[22px] stroke-current" style={{ strokeWidth: 20 }} />
               </Link>
 
-              {/* Bell icon */}
-              <div className="relative cursor-pointer text-gray-500 hover:text-[#002f5e] transition-colors flex items-center">
-                <BellOutlined className="text-[22px] stroke-current" style={{ strokeWidth: 20 }} />
-                <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-[#ef4444] rounded-full border-2 border-white transform translate-x-1/3 -translate-y-1/3"></span>
-              </div>
+              {/* Notification Bell */}
+              <NotificationDropdown />
 
               {/* Đăng tin button */}
               <button

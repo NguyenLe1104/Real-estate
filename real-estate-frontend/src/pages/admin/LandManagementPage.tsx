@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
-import { landApi, propertyCategoryApi } from '@/api';
+import { landApi, propertyCategoryApi, employeeApi } from '@/api';
 import { formatCurrency, formatArea } from '@/utils';
-import type { Land, PropertyCategory } from '@/types';
+import type { Land, PropertyCategory, Employee } from '@/types';
 import { useAuthStore } from '@/stores/authStore';
 import { DEFAULT_PAGE_SIZE } from '@/constants';
 import { Button, Badge, DataTable, ImageLightbox } from '@/components/ui';
@@ -37,6 +37,8 @@ const LandManagementPage: React.FC = () => {
     const [deleteTarget, setDeleteTarget] = useState<Land | null>(null);
     const [deleting, setDeleting] = useState(false);
     const [detailItem, setDetailItem] = useState<Land | null>(null);
+    const [employees, setEmployees] = useState<Employee[]>([]);
+    const [employeeFilter, setEmployeeFilter] = useState<string>('');
 
     const landCategories = categories.filter((c) => c.categoryType === 'LAND');
 
@@ -46,6 +48,16 @@ const LandManagementPage: React.FC = () => {
             setCategories(res.data.data || res.data);
         } catch {
             toast.error('Lỗi tải danh mục');
+        }
+    }, []);
+
+    const loadEmployees = useCallback(async () => {
+        try {
+            const res = await employeeApi.getAll({ limit: 100, page: 1 });
+            const data = res.data.data || res.data;
+            setEmployees(Array.isArray(data) ? data : data?.data ?? []);
+        } catch {
+            // silently ignore
         }
     }, []);
 
@@ -59,11 +71,13 @@ const LandManagementPage: React.FC = () => {
             };
             if (search) listParams.search = search;
             if (categoryFilter) listParams.categoryId = Number(categoryFilter);
+            if (employeeFilter) listParams.employeeId = Number(employeeFilter);
 
             const countParams = (status: number): Record<string, unknown> => {
                 const params: Record<string, unknown> = { page: 1, limit: 1, status };
                 if (search) params.search = search;
                 if (categoryFilter) params.categoryId = Number(categoryFilter);
+                if (employeeFilter) params.employeeId = Number(employeeFilter);
                 return params;
             };
 
@@ -93,11 +107,12 @@ const LandManagementPage: React.FC = () => {
         } finally {
             setLoading(false);
         }
-    }, [page, search, statusFilter, categoryFilter]);
+    }, [page, search, statusFilter, categoryFilter, employeeFilter]);
 
     useEffect(() => {
         loadCategories();
-    }, [loadCategories]);
+        loadEmployees();
+    }, [loadCategories, loadEmployees]);
 
     useEffect(() => {
         loadLands();
@@ -187,6 +202,23 @@ const LandManagementPage: React.FC = () => {
             title: 'Danh mục',
             key: 'category',
             render: (_: unknown, record: Land) => record.category?.name || '—',
+        },
+        {
+            title: 'NV quản lý',
+            key: 'employee',
+            width: 160,
+            render: (_: unknown, record: Land) => {
+                const name = record.employee?.user?.fullName;
+                if (!name) return <span className="text-gray-300 text-xs">Chưa phân công</span>;
+                return (
+                    <div className="flex items-center gap-1.5">
+                        <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-100 text-[10px] font-bold text-brand-600">
+                            {name.split(' ').pop()?.charAt(0).toUpperCase()}
+                        </span>
+                        <span className="text-sm text-gray-700 truncate">{name}</span>
+                    </div>
+                );
+            },
         },
         {
             title: 'Trạng thái',
@@ -287,6 +319,23 @@ const LandManagementPage: React.FC = () => {
                             <option value="">Tất cả danh mục</option>
                             {landCategories.map((category) => (
                                 <option key={category.id} value={String(category.id)}>{category.name}</option>
+                            ))}
+                        </select>
+                    </div>
+                    <div className="w-full sm:max-w-[220px]">
+                        <select
+                            className="admin-control admin-filter-input h-10 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-[13px] text-gray-700 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+                            value={employeeFilter}
+                            onChange={(e) => {
+                                setEmployeeFilter(e.target.value);
+                                setPage(1);
+                            }}
+                        >
+                            <option value="">Tất cả nhân viên</option>
+                            {employees.map((emp) => (
+                                <option key={emp.id} value={String(emp.id)}>
+                                    {emp.user?.fullName ?? emp.code}
+                                </option>
                             ))}
                         </select>
                     </div>

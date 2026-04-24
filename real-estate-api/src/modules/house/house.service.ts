@@ -21,7 +21,8 @@ const houseListKey = (
   limit: number,
   status?: number,
   categoryId?: number,
-) => `houses:list:${page}:${limit}:${status ?? 'all'}:${categoryId ?? 'all'}`;
+  employeeId?: number,
+) => `houses:list:${page}:${limit}:${status ?? 'all'}:${categoryId ?? 'all'}:${employeeId ?? 'all'}`;
 const houseDetailKey = (id: number) => `house:${id}`;
 const houseSearchKey = (
   query: string,
@@ -29,8 +30,9 @@ const houseSearchKey = (
   limit: number,
   status?: number,
   categoryId?: number,
+  employeeId?: number,
 ) =>
-  `houses:search:${query}:${page}:${limit}:${status ?? 'all'}:${categoryId ?? 'all'}`;
+  `houses:search:${query}:${page}:${limit}:${status ?? 'all'}:${categoryId ?? 'all'}:${employeeId ?? 'all'}`;
 
 @Injectable()
 export class HouseService {
@@ -43,8 +45,8 @@ export class HouseService {
     private aiService: AiService,
   ) { }
 
-  async findAll(page = 1, limit = 10, status?: number, categoryId?: number) {
-    const cacheKey = houseListKey(page, limit, status, categoryId);
+  async findAll(page = 1, limit = 10, status?: number, categoryId?: number, employeeId?: number) {
+    const cacheKey = houseListKey(page, limit, status, categoryId, employeeId);
 
     // Try cache first
     const cached = await this.redis.get(cacheKey).catch(() => null);
@@ -58,6 +60,7 @@ export class HouseService {
     const where = {
       ...(status !== undefined ? { status } : {}),
       ...(categoryId !== undefined ? { categoryId } : {}),
+      ...(employeeId !== undefined ? { employeeId } : {}),
     };
 
     const [houses, total] = await Promise.all([
@@ -379,8 +382,9 @@ export class HouseService {
     limit = 10,
     status?: number,
     categoryId?: number,
+    employeeId?: number,
   ) {
-    const cacheKey = houseSearchKey(query, page, limit, status, categoryId);
+    const cacheKey = houseSearchKey(query, page, limit, status, categoryId, employeeId);
 
     const cached = await this.redis.get(cacheKey).catch(() => null);
     if (cached) {
@@ -400,6 +404,7 @@ export class HouseService {
       ],
       ...(status !== undefined ? { status } : {}),
       ...(categoryId !== undefined ? { categoryId } : {}),
+      ...(employeeId !== undefined ? { employeeId } : {}),
     };
 
     const [houses, total] = await Promise.all([
@@ -410,6 +415,11 @@ export class HouseService {
         include: {
           category: true,
           images: { select: { url: true } },
+          employee: {
+            include: {
+              user: { select: { id: true, fullName: true, phone: true } },
+            },
+          },
         },
       }),
       this.prisma.house.count({ where }),

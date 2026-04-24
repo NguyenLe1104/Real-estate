@@ -6,10 +6,12 @@ import { AppointmentController } from './appointment.controller';
 import { MailModule } from '../../common/mail/mail.module';
 import { AppointmentAutoAssignProducerService } from './appointment-auto-assign.producer';
 import { AppointmentAutoAssignConsumerController } from './appointment-auto-assign.consumer';
+import { NotificationModule } from '../notification/notification.module';
 
 @Module({
   imports: [
     MailModule,
+    NotificationModule,
     ClientsModule.registerAsync([
       {
         name: 'APPOINTMENT_ASSIGN_SERVICE',

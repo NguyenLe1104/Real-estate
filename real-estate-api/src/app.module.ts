@@ -27,6 +27,7 @@ import { FengshuiModule } from './modules/fengshui/fengshui.module';
 import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { ValuationModule } from './modules/valuation/valuation.module';
 import { TasksModule } from './tasks/tasks.module';
+import { NotificationModule } from './modules/notification/notification.module';
 
 @Module({
   imports: [
@@ -62,6 +63,7 @@ import { TasksModule } from './tasks/tasks.module';
     AnalyticsModule,
     ValuationModule,
     TasksModule,
+    NotificationModule,
   ],
   providers: [
     {

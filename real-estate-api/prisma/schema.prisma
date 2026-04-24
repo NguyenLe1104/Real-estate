@@ -36,6 +36,7 @@ model User {
   vipSubscriptions VipSubscription[]
   payments        Payment[]
   behaviors       UserBehavior[]
+  notifications   Notification[]
 
   @@map("users")
 }
@@ -443,6 +444,26 @@ model Payment {
 
   @@map("payments")
 }
+// ==================== NOTIFICATIONS ====================
+
+model Notification {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  type      String   @db.VarChar(50) // 'APPOINTMENT_APPROVED', 'APPOINTMENT_REJECTED', 'POST_APPROVED', 'POST_REJECTED', 'VIP_EXPIRING', 'SYSTEM'
+  title     String   @db.VarChar(255)
+  message   String   @db.Text
+  isRead    Boolean  @default(false) @map("is_read")
+  refId     Int?     @map("ref_id")   // ID của appointment / post liên quan
+  refType   String?  @map("ref_type") @db.VarChar(50) // 'appointment' | 'post'
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+  @@map("notifications")
+}
+
 model PaymentTransaction {
   id            Int      @id @default(autoincrement())
   paymentId     Int?     @map("payment_id")

@@ -10,6 +10,7 @@ import { CloudinaryService } from '../../common/cloudinary/cloudinary.service';
 import { CreatePostDto, UpdatePostDto, PostType } from './dto/post.dto';
 import { MailProducerService } from '../../common/mail/mail-producer.service';
 import { MailService } from '../../common/mail/mail.service';
+import { NotificationService } from '../notification/notification.service';
 
 @Injectable()
 export class PostService {
@@ -18,6 +19,7 @@ export class PostService {
     private cloudinaryService: CloudinaryService,
     private mailProducer: MailProducerService,
     private mailService: MailService,
+    private notificationService: NotificationService,
   ) {}
 
   private isVipSchemaMismatchError(error: unknown): boolean {
@@ -606,6 +608,9 @@ export class PostService {
       );
     }
 
+    // Gửi thông báo trong ứng dụng
+    void this.notificationService.notifyPostApproved(post.userId, id, post.title).catch(() => null);
+
     return { message: 'Đã duyệt bài đăng' };
   }
 
@@ -633,6 +638,9 @@ export class PostService {
         html,
       );
     }
+
+    // Gửi thông báo trong ứng dụng
+    void this.notificationService.notifyPostRejected(post.userId, id, post.title).catch(() => null);
 
     return { message: 'Đã từ chối bài đăng', data: updated };
   }

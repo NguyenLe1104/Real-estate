@@ -26,6 +26,7 @@ import PaymentResultPage from "@/pages/public/PaymentResultPage";
 import MoMoCallbackPage from "@/pages/public/MomoPayCallbackPage";
 import FengshuiPage from "@/pages/public/FengShui";
 import ValuationPage from "@/pages/public/valuation/ValuationPage";
+import NotificationsPage from "@/pages/public/NotificationsPage";
 
 // Auth pages
 import LoginPage from "@/pages/auth/LoginPage";
@@ -132,6 +133,14 @@ const router = createBrowserRouter([
         element: (
           <ProtectedRoute>
             <VIPUpgradePage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "notifications",
+        element: (
+          <ProtectedRoute>
+            <NotificationsPage />
           </ProtectedRoute>
         ),
       },

@@ -32,11 +32,16 @@ export class LandController {
     @Query('search') search?: string,
     @Query('status') status?: string,
     @Query('categoryId') categoryId?: string,
+    @Query('employeeId') employeeId?: string,
   ) {
     const parsedStatus = status ? Number(status) : undefined;
     const parsedCategoryId =
       categoryId !== undefined && categoryId !== ''
         ? Number(categoryId)
+        : undefined;
+    const parsedEmployeeId =
+      employeeId !== undefined && employeeId !== ''
+        ? Number(employeeId)
         : undefined;
 
     if (search)
@@ -46,6 +51,7 @@ export class LandController {
         +limit,
         parsedStatus,
         parsedCategoryId,
+        parsedEmployeeId,
       );
 
     return this.landService.findAll(
@@ -53,6 +59,7 @@ export class LandController {
       +limit,
       parsedStatus,
       parsedCategoryId,
+      parsedEmployeeId,
     );
   }
 

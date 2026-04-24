@@ -12,6 +12,7 @@ import { MailService } from '../../common/mail/mail.service';
 import { MailProducerService } from '../../common/mail/mail-producer.service';
 import { formatDateTime } from '../../common/utils/format-datetime';
 import { AppointmentAutoAssignProducerService } from './appointment-auto-assign.producer';
+import { NotificationService } from '../notification/notification.service';
 import {
   CreateAppointmentDto,
   AdminCreateAppointmentDto,
@@ -101,9 +102,10 @@ export class AppointmentService implements OnModuleInit, OnModuleDestroy {
   // Khởi tạo các dependency dùng cho logic lịch hẹn, mail và auto-assign.
   constructor(
     private prisma: PrismaService,
-    private mailService: MailService, // dùng để lấy HTML template
-    private mailProducer: MailProducerService, // dùng để publish lên RabbitMQ
+    private mailService: MailService,
+    private mailProducer: MailProducerService,
     private autoAssignProducer: AppointmentAutoAssignProducerService,
+    private notificationService: NotificationService,
   ) { }
 
   // Tạo timer chạy nền để cập nhật SLA định kỳ mỗi phút.
@@ -937,7 +939,6 @@ export class AppointmentService implements OnModuleInit, OnModuleDestroy {
         formatDateTime(appointmentFull.appointmentDate),
         propertyTitle,
       );
-      // Publish lên RabbitMQ – không block request
       this.mailProducer.sendMail(
         appointmentFull.customer.user.email,
         'Lịch hẹn của bạn đã bị từ chối - BĐS',
@@ -945,7 +946,25 @@ export class AppointmentService implements OnModuleInit, OnModuleDestroy {
       );
     }
 
+    // Gửi thông báo trong ứng dụng khi trạng thái thay đổi
+    if (dto.status === 1 || dto.status === 2) {
+      const updateCustomerUserId = appointmentFull?.customer?.userId as number | undefined;
+      if (updateCustomerUserId) {
+        const propertyTitle = appointmentFull?.house?.title || appointmentFull?.land?.title || '';
+        if (dto.status === 1) {
+          void this.notificationService
+            .notifyAppointmentApproved(updateCustomerUserId, id, propertyTitle, appointmentFull!.appointmentDate)
+            .catch(() => null);
+        } else {
+          void this.notificationService
+            .notifyAppointmentRejected(updateCustomerUserId, id, propertyTitle)
+            .catch(() => null);
+        }
+      }
+    }
+
     return { message: 'Cập nhật lịch hẹn thành công', data: updated };
+
   }
 
   // Xóa một lịch hẹn theo id.
@@ -1072,12 +1091,20 @@ export class AppointmentService implements OnModuleInit, OnModuleDestroy {
         formatDateTime(appointment.appointmentDate),
         propertyTitle,
       );
-      // Publish lên RabbitMQ – không block request
       this.mailProducer.sendMail(
         appointment.customer.user.email,
         'Lịch hẹn của bạn đã được duyệt - BĐS',
         html,
       );
+    }
+
+    // Gửi thông báo trong ứng dụng cho customer
+    const customerUserId = appointment.customer?.userId as number | undefined;
+    if (customerUserId) {
+      const propertyTitle = appointment.house?.title || appointment.land?.title || '';
+      void this.notificationService
+        .notifyAppointmentApproved(customerUserId, id, propertyTitle, appointment.appointmentDate)
+        .catch(() => null);
     }
 
     return { message: 'Duyệt lịch hẹn thành công', data: updated };
@@ -1117,12 +1144,20 @@ export class AppointmentService implements OnModuleInit, OnModuleDestroy {
         propertyTitle,
         dto?.cancelReason,
       );
-      // Publish lên RabbitMQ – không block request
       this.mailProducer.sendMail(
         appointment.customer.user.email,
         'Lịch hẹn của bạn đã bị từ chối - BĐS',
         html,
       );
+    }
+
+    // Gửi thông báo trong ứng dụng cho customer
+    const cancelCustomerUserId = appointment.customer?.userId as number | undefined;
+    if (cancelCustomerUserId) {
+      const propertyTitle = appointment.house?.title || appointment.land?.title || '';
+      void this.notificationService
+        .notifyAppointmentRejected(cancelCustomerUserId, id, propertyTitle, dto?.cancelReason)
+        .catch(() => null);
     }
 
     return { message: 'Từ chối lịch hẹn thành công', data: updated };

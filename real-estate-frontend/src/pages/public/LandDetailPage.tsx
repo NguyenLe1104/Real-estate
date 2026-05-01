@@ -163,13 +163,13 @@ const Gallery: React.FC<GalleryProps> = ({ images, title }) => {
 
     if (images.length === 0) {
         return (
-            <div className="w-full h-[420px] bg-gradient-to-br from-slate-100 to-slate-200 rounded-2xl flex flex-col items-center justify-center gap-3 mb-10">
-                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="1.5">
+            <div className="w-full h-[420px] rounded-2xl flex flex-col items-center justify-center gap-3 mb-10 bg-[#f3f4f6]">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#b0b8c4" strokeWidth="1.5">
                     <rect x="3" y="3" width="18" height="18" rx="2" />
                     <circle cx="8.5" cy="8.5" r="1.5" />
                     <polyline points="21 15 16 10 5 21" />
                 </svg>
-                <span className="text-slate-400 text-sm">Chưa có hình ảnh</span>
+                <span className="text-[#9ca3af] font-semibold text-sm">Chưa có hình ảnh</span>
             </div>
         );
     }

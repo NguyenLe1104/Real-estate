@@ -15,9 +15,22 @@ const formatPrice = (v?: number) => {
 };
 
 const getThumbnail = (images?: PostImage[]) => {
-    if (!images?.length) return "https://via.placeholder.com/600x400";
+    if (!images?.length) return "";
     return [...images].sort((a, b) => (a.position ?? 0) - (b.position ?? 0))[0].url;
 };
+
+/** Gradient + icon placeholder per post type */
+const CARD_TYPE_STYLE: Record<string, { gradient: string; icon: string }> = {
+    NEED_BUY:   { gradient: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)", icon: "🔍" },
+    NEED_RENT:  { gradient: "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)", icon: "🔑" },
+    NEWS:       { gradient: "linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)", icon: "📰" },
+    PROMOTION:  { gradient: "linear-gradient(135deg, #fa709a 0%, #fee140 100%)", icon: "🎁" },
+    SELL_HOUSE: { gradient: "linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)", icon: "🏠" },
+    SELL_LAND:  { gradient: "linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)", icon: "🌿" },
+    RENT_HOUSE: { gradient: "linear-gradient(135deg, #fbc2eb 0%, #a6c1ee 100%)", icon: "🏡" },
+    RENT_LAND:  { gradient: "linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)", icon: "🌾" },
+};
+const DEFAULT_CARD_STYLE = { gradient: "linear-gradient(135deg, #a8c0ff 0%, #3f2b96 100%)", icon: "📋" };
 
 const formatDateTime = (d?: string | null) => {
     if (!d) return "";
@@ -42,6 +55,8 @@ const toPlainText = (value?: string) => {
 
 const NewsCard = ({ post }: Props) => {
     const navigate = useNavigate();
+    const thumb = getThumbnail(post.images);
+    const typeStyle = CARD_TYPE_STYLE[post.postType] ?? DEFAULT_CARD_STYLE;
 
     return (
         <div
@@ -61,10 +76,25 @@ const NewsCard = ({ post }: Props) => {
 
             {/* IMAGE */}
             <div className="relative w-[240px] h-[160px]">
-                <img
-                    src={getThumbnail(post.images)}
-                    className="w-full h-full object-cover rounded-xl"
-                />
+                {thumb ? (
+                    <img
+                        src={thumb}
+                        className="w-full h-full object-cover rounded-xl"
+                    />
+                ) : (
+                    <div
+                        className="w-full h-full rounded-xl flex flex-col items-center justify-center gap-2 bg-[#f3f4f6]"
+                    >
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#b0b8c4" strokeWidth="1.5">
+                            <rect x="3" y="3" width="18" height="18" rx="2" />
+                            <circle cx="8.5" cy="8.5" r="1.5" />
+                            <polyline points="21 15 16 10 5 21" />
+                        </svg>
+                        <span className="text-[10px] font-semibold uppercase tracking-wider text-[#9ca3af]">
+                            {post.postType?.replace(/_/g, ' ') ?? 'Bài viết'}
+                        </span>
+                    </div>
+                )}
 
                 {post.isVip && (
                     <div className="absolute top-2 left-2 flex flex-col gap-1.5 z-10">

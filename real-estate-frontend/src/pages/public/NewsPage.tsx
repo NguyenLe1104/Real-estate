@@ -29,6 +29,28 @@ const getThumbnail = (images?: PostImage[]) => {
   return [...images].sort((a, b) => a.position - b.position)[0]?.url ?? "";
 };
 
+/** Minimal no-image placeholder */
+const NoImagePlaceholder = ({ postType, className = "" }: { postType?: string; className?: string }) => {
+  const label = CATEGORY_TABS.find(c => c.value === postType)?.label ?? "Bài viết";
+  return (
+    <div
+      className={`flex items-center justify-center bg-[#f3f4f6] ${className}`}
+      style={{ width: "100%", height: "100%" }}
+    >
+      <div className="flex flex-col items-center gap-2">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#b0b8c4" strokeWidth="1.5">
+          <rect x="3" y="3" width="18" height="18" rx="2" />
+          <circle cx="8.5" cy="8.5" r="1.5" />
+          <polyline points="21 15 16 10 5 21" />
+        </svg>
+        <span className="text-[10px] font-semibold uppercase tracking-wider text-[#9ca3af]">
+          {label}
+        </span>
+      </div>
+    </div>
+  );
+};
+
 const formatDate = (raw?: string | null) => {
   if (!raw) return "";
   const d = new Date(raw);
@@ -254,11 +276,28 @@ const HeroSlider = ({
 const ListCard = ({ post }: { post: Post }) => {
   const navigate = useNavigate();
   const img = getThumbnail(post.images as any);
+  const hasImage = !!img;
   const date = formatDate(post.postedAt ?? post.createdAt);
   const time = formatTime(post.postedAt ?? post.createdAt);
-  const cat = CATEGORY_TABS.find(c => c.value === (post.postType ?? (post as any).type ?? (post as any).postType ?? (post as any).post_type))?.label ?? "BÀI VIẾT";
+  const postType = post.postType ?? (post as any).type ?? (post as any).postType ?? (post as any).post_type;
+  const cat = CATEGORY_TABS.find(c => c.value === postType)?.label ?? "BÀI VIẾT";
   const isVip = !!post.isVip;
   const desc = toPlainText((post as any).description);
+
+  // ── Thumbnail or Placeholder ──
+  const renderThumbnail = (minH: number, borderRadius = "rounded-xl") => (
+    <div className={`relative w-full h-full overflow-hidden ${borderRadius}`} style={{ minHeight: minH }}>
+      {hasImage ? (
+        <img
+          src={img}
+          alt={post.title}
+          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+        />
+      ) : (
+        <NoImagePlaceholder postType={postType} className={`group-hover:scale-105 transition-transform duration-500 ${borderRadius}`} />
+      )}
+    </div>
+  );
 
   if (isVip) {
     return (
@@ -271,16 +310,19 @@ const ListCard = ({ post }: { post: Post }) => {
           boxShadow: "0 2px 8px rgba(249,115,22,0.07)",
         }}
       >
-
         <div className="shrink-0 p-3" style={{ width: 230 }}>
           <div className="relative w-full h-full overflow-hidden rounded-xl" style={{ minHeight: 160 }}>
-            <img
-              src={img}
-              alt={post.title}
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-            />
+            {hasImage ? (
+              <img
+                src={img}
+                alt={post.title}
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+              />
+            ) : (
+              <NoImagePlaceholder postType={postType} className="group-hover:scale-105 transition-transform duration-500 rounded-xl" />
+            )}
             <span
-              className="absolute top-2.5 left-2.5 text-white text-[9px] font-extrabold px-2.5 py-1 rounded-full uppercase tracking-widest shadow"
+              className="absolute top-2.5 left-2.5 text-white text-[9px] font-extrabold px-2.5 py-1 rounded-full uppercase tracking-widest shadow z-10"
               style={{ background: "#f97316" }}
             >
               VIP
@@ -328,7 +370,7 @@ const ListCard = ({ post }: { post: Post }) => {
     );
   }
 
-  // Regular card — clean, editorial
+  // ── Regular card — with or without image ──
   return (
     <article
       onClick={() => navigate(`/posts/${post.id}`)}
@@ -339,13 +381,17 @@ const ListCard = ({ post }: { post: Post }) => {
         boxShadow: "0 1px 4px rgba(0,0,0,0.04)",
       }}
     >
-      {/* Thumbnail flush */}
+      {/* Thumbnail or gradient placeholder */}
       <div className="relative shrink-0 overflow-hidden rounded-xl m-3" style={{ width: 200, minHeight: 150 }}>
-        <img
-          src={img}
-          alt={post.title}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-        />
+        {hasImage ? (
+          <img
+            src={img}
+            alt={post.title}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+          />
+        ) : (
+          <NoImagePlaceholder postType={postType} className="group-hover:scale-105 transition-transform duration-500 rounded-xl" />
+        )}
       </div>
 
       {/* Content */}
@@ -471,6 +517,7 @@ const SidebarLatest = ({ posts }: { posts: Post[] }) => {
       <div className="overflow-y-auto" style={{ maxHeight: 450 }}>
         {posts.map((p, i) => {
           const img = getThumbnail(p.images as any);
+          const pType = p.postType ?? (p as any).type;
           return (
             <div
               key={p.id}
@@ -481,11 +528,15 @@ const SidebarLatest = ({ posts }: { posts: Post[] }) => {
                 borderBottom: i < posts.length - 1 ? "2px solid #fff" : "none",
               }}
             >
-              <img
-                src={img}
-                alt={p.title}
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-              />
+              {img ? (
+                <img
+                  src={img}
+                  alt={p.title}
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                />
+              ) : (
+                <NoImagePlaceholder postType={pType} className="group-hover:scale-105 transition-transform duration-500" />
+              )}
               {/* Gradient overlay — strong bottom for legibility */}
               <div
                 className="absolute inset-0"

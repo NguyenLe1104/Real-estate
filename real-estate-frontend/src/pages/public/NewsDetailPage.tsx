@@ -41,9 +41,18 @@ const API = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
 
 // ===== HELPERS =====
 const getThumbnail = (images?: PostImage[]) => {
-  if (!images?.length) return "https://placehold.co/800x500?text=No+Image";
+  if (!images?.length) return "";
   return [...images].sort((a, b) => a.position - b.position)[0].url;
 };
+
+/* Minimal SVG icon for no-image placeholders */
+const NoImageSvg = ({ size = 32 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="#b0b8c4" strokeWidth="1.5">
+    <rect x="3" y="3" width="18" height="18" rx="2" />
+    <circle cx="8.5" cy="8.5" r="1.5" />
+    <polyline points="21 15 16 10 5 21" />
+  </svg>
+);
 
 
 const maskPhone = (phone?: string, show = false) => {
@@ -184,9 +193,10 @@ const Lightbox: React.FC<LightboxProps> = ({ images, startIndex, title, onClose 
 interface GalleryProps {
   images: string[];
   title: string;
+  postType?: string;
 }
 
-const Gallery: React.FC<GalleryProps> = ({ images, title }) => {
+const Gallery: React.FC<GalleryProps> = ({ images, title, postType }) => {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const openLightbox = (index: number) => setLightboxIndex(index);
   const closeLightbox = () => setLightboxIndex(null);
@@ -194,11 +204,9 @@ const Gallery: React.FC<GalleryProps> = ({ images, title }) => {
   // No images
   if (images.length === 0) {
     return (
-      <div className="w-full h-[420px] bg-gradient-to-br from-slate-100 to-slate-200 rounded-2xl flex flex-col items-center justify-center gap-3 mb-6">
-        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="1.5">
-          <rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" />
-        </svg>
-        <span className="text-slate-400 text-sm">Chưa có hình ảnh</span>
+      <div className="w-full h-[420px] rounded-2xl flex flex-col items-center justify-center gap-3 mb-6 bg-[#f3f4f6]">
+        <NoImageSvg size={48} />
+        <span className="text-[#9ca3af] font-semibold text-sm">Chưa có hình ảnh</span>
       </div>
     );
   }
@@ -613,7 +621,7 @@ const NewsDetailPage = () => {
           </div>
 
           {/* ── GALLERY ── */}
-          <Gallery images={imageUrls} title={post.title} />
+          <Gallery images={imageUrls} title={post.title} postType={(post as any).postType || (post as any).type} />
 
           {/* ── STATS BAR ── */}
           {(post.area || post.direction || post.postedAt || post.propertyType) && (
@@ -699,8 +707,17 @@ const NewsDetailPage = () => {
                 <div key={r.id} onClick={() => navigate(`/posts/${r.id}`)}
                   className="group overflow-hidden rounded-2xl border border-gray-200 bg-white hover:shadow-md transition-shadow cursor-pointer">
                   <div className="relative aspect-video overflow-hidden">
-                    <img src={getThumbnail(r.images)} alt={r.title}
-                      className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                    {(() => {
+                      const thumb = getThumbnail(r.images);
+                      return thumb ? (
+                        <img src={thumb} alt={r.title}
+                          className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                      ) : (
+                        <div className="absolute inset-0 h-full w-full flex flex-col items-center justify-center gap-2 bg-[#f3f4f6]">
+                           <NoImageSvg size={28} />
+                        </div>
+                      );
+                    })()}
                     {r.isVip && (
                       <span className="absolute top-2 left-2 text-white text-[9px] font-extrabold px-2.5 py-1 rounded-full uppercase tracking-widest shadow"
                         style={{ background: '#f97316' }}>VIP</span>
